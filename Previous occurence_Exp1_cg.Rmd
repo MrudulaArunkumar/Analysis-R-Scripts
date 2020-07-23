@@ -1,0 +1,341 @@
+# **Analysis of Exp1 with the previous trial and distance along with response relation**
+#### 3rd April 2020
+*Mrudula*
+
+Loading the libraries and setting up the working directory 
+```{r Libraryloading, message = FALSE}
+library(plyr)
+library(tidyverse)
+library(ez)
+library(schoRsch)
+library(lme4)
+library(nlme)
+library(data.table)
+
+#removing workspace objects
+rm(list = ls())
+#setwd("D:/PhD/Exp1-Overshadowing/Analysis")
+#home office setup
+#setwd("C:/FSU Jena_PhD/Exp1/Analysis")
+
+#Carina
+setwd("C:/Users/carina/Desktop/Wichtige Docs/Mrudula")
+#go to chunk 11 to load dataframe that already contains distance and ResponseType
+```
+
+Load the dataframe 
+```{r}
+Exp1data <- read.csv("C:/Users/carina/Desktop/Wichtige Docs/Mrudula/Exp1data.csv")
+#removing the first column named x
+Exp1data <- subset(Exp1data, select = -c(X))
+#renaming first column to subject
+names(Exp1data)[1] <- "Subject"
+```
+
+Preparing the data frame
+* Creating two columns that contains the RT and ACC values
+* Creating a new column with error rates
+* Removing the values from the practice trials --- **keeping the learning trials for the previous occurence analysis**
+```{r}
+#creating 2 columns for RT and ACC
+Exp1data$RT_Trial <- Exp1data$ExpDisplay.RT
+Exp1data$ACC_Trial <- Exp1data$ExpDisplay.ACC
+Exp1data$Errorrate <- 1 - Exp1data$ACC_Trial
+
+#removing practice trials
+Exp1data <- Exp1data[!grepl("Practice", Exp1data$Condition),]
+```
+Below you can find the summary of the Reaction Time data and  error percentage
+```{r}
+summary(Exp1data$RT_Trial)
+table(Exp1data$ACC_Trial)
+round(table(Exp1data$ACC_Trial)/nrow(Exp1data)*100, digits = 3)
+```
+
+### Removing RTs and outliers
+
+First removing RTs of inaccurate trials and identifying outliers and farouts
+```{r}
+Exp1data$RT_Trial[Exp1data$ACC_Trial==0] <- NA
+#summary after removing incorrect trials
+summary(Exp1data$RT_Trial)
+#OUtliers
+#creating function to remove outliers and farouts
+computeTukeys <- function(x){
+  P25 <- quantile(x$RT, .25, na.rm = TRUE, type = 6) #type = 6 -> nimmt SPSS
+  P75 <- quantile(x$RT, .75, na.rm = TRUE, type = 6)
+  x$Outlier <- P75 + 1.5*(P75 - P25)
+  x$Farouts <- P75 + 3.0*(P75 - P25)
+  return(x)
+}
+
+#identifying RT farouts in the individual level
+Exp1data <- ddply(Exp1data, .(Subject), computeTukeys)
+summary(Exp1data$RT_Trial)
+
+#creating new column with RT trials after removing outliers
+Exp1data$RT_Trial_ifo <- Exp1data$RT_Trial
+Exp1data$RT_Trial_io <- Exp1data$RT_Trial
+Exp1data$RT_Trial_ifo[Exp1data$RT_Trial_ifo > Exp1data$Farouts|Exp1data$RT_Trial_ifo < 300] <- NA
+Exp1data$RT_Trial_io[Exp1data$RT_Trial_io > Exp1data$Outlier|Exp1data$RT_Trial_io < 300] <- NA
+summary(Exp1data$RT_Trial_ifo)
+summary(Exp1data$RT_Trial_io)
+```
+### Carina, Standard analysis**
+
+
+
+
+```{r}
+Exp1.aggdata_ifo <- aggregate(data=Exp1data, RT_Trial_ifo~Subject+Saliency+validity, mean)
+
+# changing the variables to factors for ANOVA analysis
+Exp1.aggdata_ifo$Subject <- as.factor(Exp1.aggdata_ifo$Subject)
+Exp1.aggdata_ifo$Saliency <- as.factor(Exp1.aggdata_ifo$Saliency)
+Exp1.aggdata_ifo$validity <- as.factor(Exp1.aggdata_ifo$validity)
+
+anova_ifo <- ezANOVA(data = Exp1.aggdata_ifo,
+                    dv = RT_Trial_ifo,
+                    wid = Subject,
+                    within = .(Saliency,validity),
+                    detailed = TRUE)
+anova_out(anova_ifo)
+
+
+#plot 
+mean_resp_standard <- ezStats(data = Exp1.aggdata_ifo,
+                     dv = RT_Trial_ifo,
+                     wid = Subject,
+                     within = .(Saliency, validity))
+
+ggplot(mean_resp_standard, aes(x=Saliency, color=validity, y=Mean))+
+  geom_line(aes(group=validity))+
+  geom_point()+
+  labs(x="Saliency", y = "ReactionTime")+
+  theme_classic()+
+  ylim(450,500)+
+  ggtitle("RT as function of saliency and validity")+
+  theme(plot.title = element_text(hjust = 0.5))+
+  theme(legend.title = element_text(size=12), legend.text= element_text(size=10))+
+  theme(axis.title = element_text(size=12),axis.text = element_text(size=10))
+```
+The results of the ANOVA 
+
+
+
+### Previous occurence analysis
+
+Moving the relevant columns to the end for easy reference of checking for the last occurence
+```{r}
+
+# moving condition to the last column for easy reference
+Exp1data <- Exp1data%>%select(-Condition,Condition)
+Exp1data <- Exp1data%>%select(-Distractor1,Distractor1)
+Exp1data <- Exp1data%>%select(-Distractor2,Distractor2)
+
+```
+
+Now, First step is to add a column that contains the value of how far the previous occurence was. It contains the lag variable. First step is to code the variables where the last occurence was the **immediately** preceding trial(where lag = 1). 
+
+```{r}
+#For TEST Trials
+#giving the condition and later assigning what to do when the condition is TRUE
+#Giving a default value of far for the Distance column
+Exp1data$Distance <- NA
+Exp1data <- Exp1data %>%
+  mutate(Distance = ifelse(lag(Condition,1)=="test" & 
+              (lag(Distractor1,1)==Distractor1|lag(Distractor1,1)==Distractor2) &
+                            lag(Subject,1)==Subject &
+                            lag(ACC_Trial,1)== 1, 1, Distance))
+#For LEARN trials 
+Exp1data <- Exp1data %>%
+  mutate(Distance = ifelse(lag(Condition,1)=="learn" &                           (lag(Distractor1,1)==Distractor1|lag(Distractor1,1)==Distractor2|lag(Distractor2,1)==Distractor1) & lag(Subject,1)==Subject &  lag(ACC_Trial,1)== 1, 1, Distance))
+
+#The number of immediate previous occurences
+table(Exp1data$Distance)
+sum(is.na(Exp1data$Distance))
+
+```
+
+Now to add values for previous occurence that were not the immediately preceding  (eg. n-2, n-3, n-4....)
+
+```{r}
+#using same logic as previous one and checking lag more than 1 for previous occurence
+#creating a vector containing values to lag
+
+lagvalue <- 2:30
+
+#For learn trials and test trials together
+
+for(j in lagvalue){
+  Exp1data <- Exp1data %>% 
+    mutate(Distance = ifelse((lag(Condition,j)=="learn"|lag(Condition,j)=="test") &                     (lag(Distractor1,j)==Distractor1|lag(Distractor1,j)==Distractor2|lag(Distractor2,j)==Distractor1) & lag(Subject,j)==Subject & lag(ACC_Trial,j)== 1 & is.na(Distance)==TRUE, j, Distance))
+}
+
+table(Exp1data$Distance)
+sum(is.na(Exp1data$Distance))
+#For Test Trials
+
+# #for(i in lagvalue){
+#   Exp1data <- Exp1data %>%
+#       mutate(Distance = ifelse(lag(Condition,i)=="test" & (lag(Distractor1,i)==Distractor1|lag(Distractor1,i)==Distractor2)& lag(Subject,i)==Subject & lag(ACC_Trial,i)== 1 & Distance == "far", i, Distance))
+#   }
+# 
+# table(Exp1data$Distance)
+# 
+# sum(is.na(Exp1data$Distance))
+
+
+```
+
+### Previous response 
+
+To check whether the response was repeated or different w.r.t to the previous trial
+First, creating another column that contains the values "RR" or "RC" based on whether the response is repeated or changed respectively.
+*Using lag function to look back at trials to check whether the last time that occurence happened was the same response or a different one.
++If for example the previous time Tisch|Bahn occured was a test trial 3 rows back where the response expected was "l" then the responsetype column would have the value "RR"
+
+```{r}
+Exp1data$ResponseType <- NA
+Exp1data <- Exp1data%>%select(-CorrectAnswer,CorrectAnswer)
+
+#coding repeating the same response and if the conditions are not true the RC is evaluated under the else clause within the main ifelse statement. This was done to avoid revaluating and missing out values that are originally RC but was treated as RR as that was evaluated first.
+Rmlag <- 1:30
+for(k in Rmlag){
+Exp1data <- Exp1data %>% 
+  mutate(ResponseType = ifelse((lag(Condition,k)=="learn" | lag(Condition,k)=="test") &          (lag(Distractor1,k)==Distractor1|lag(Distractor1,k)==Distractor2|lag(Distractor2,k)==Distractor1) & lag(Subject,k)==Subject & lag(CorrectAnswer,k)== CorrectAnswer & is.na(ResponseType)==TRUE, "RR", ifelse((lag(Condition,k)=="learn"|lag(Condition,k)=="test") & (lag(Distractor1,k)==Distractor1|lag(Distractor1,k)==Distractor2|lag(Distractor2,k)==Distractor1)& lag(Subject,k)==Subject & lag(CorrectAnswer,k)!= CorrectAnswer & is.na(ResponseType)==TRUE, "RC", ResponseType)))
+}
+
+table(Exp1data$ResponseType)
+sum(is.na(Exp1data$ResponseType))
+
+
+table(Exp1data$ResponseType)
+sum(is.na(Exp1data$ResponseType))
+
+#Carina 
+#crosstable to check factorial combination of Distance x Response Type:
+table(Exp1data$Distance, Exp1data$ResponseType)
+
+#crosstable to check factorial combination of Distance x Response Type x COndition:
+table(Exp1data$Distance, Exp1data$ResponseType, Exp1data$Condition)
+
+```
+First Export this data frame to a csv file for future use.
+Remove the learn trials to aggregate means and explore relationship between ResponseTypexSaliencyxValidity
+
+```{r Analysis after preparing the data}
+write.csv(Exp1data, file = "Exp1data_Distance+ResponseType_v2.csv")
+
+
+Exp1data <- read.csv("C:/Users/carina/Desktop/Wichtige Docs/Mrudula/Exp1data_Distance+ResponseType_v2.csv")
+#Removing learn trials
+table(Exp1data$Condition)
+table(Exp1data$Distance, Exp1data$ResponseType, Exp1data$Condition)
+
+Exp1data <- Exp1data[!grepl("learn", Exp1data$Condition),]
+table((Exp1data$Condition))
+table(Exp1data$Distance, Exp1data$ResponseType, Exp1data$Condition)
+
+```
+
+
+##Aggregate means with response distractor relation
+```{r}
+Exp1data.agg <- aggregate(data =Exp1data, RT_Trial_ifo~Subject+Saliency+validity+ResponseType+Distance, mean)
+
+table(Exp1data.agg$ResponseType)
+#Carina
+
+table(Exp1data.agg$Distance, Exp1data.agg$ResponseType)
+
+Exp1data.agg$Subject <- as.factor(Exp1data.agg$Subject)
+Exp1data.agg$Saliency <- as.factor(Exp1data.agg$Saliency)
+Exp1data.agg$validity <- as.factor(Exp1data.agg$validity)
+mean_resp <- ezStats(data = Exp1data.agg,
+                     dv = RT_Trial_ifo,
+                     wid = Subject,
+                     within = .(Saliency, validity, ResponseType))
+
+#Carina
+#ANOVA
+
+#standard data (RT sa function of saliency x validity)
+anova_ifo <- ezANOVA(data = Exp1.aggdata_ifo,
+                    dv = RT_Trial_ifo,
+                    wid = Subject,
+                    within = .(Saliency,validity),
+                    detailed = TRUE)
+anova_out(anova_ifo)
+
+
+
+#Accounting for previous occurences
+ezout<-ezANOVA(data = Exp1data.agg,
+               dv=RT_Trial_ifo,
+               wid=Subject,
+               within = .(Saliency, validity, ResponseType),
+               detailed = TRUE)
+
+  anova_out(ezout)    
+```
+
+##Plotting Distractor*RR and RC
+
+```{r}
+ggplot(mean_resp, aes(x=ResponseType, color=Saliency, y=Mean))+
+  geom_line(aes(group=Saliency))+
+  geom_point()+
+  labs(x="Response Type", y = "ReactionTime")+
+  facet_grid(.~validity)+
+  theme_classic()+
+  ylim(450,500)+
+  ggtitle("Rel bw  ResponseType based on saliency and validity")+
+  theme(plot.title = element_text(hjust = 0.5))+
+  theme(legend.title = element_text(size=12), legend.text= element_text(size=10))+
+  theme(axis.title = element_text(size=12),axis.text = element_text(size=10))
+
+#Carina
+
+#plot Standard analysis
+
+ggplot(mean_resp_standard, aes(x=Saliency, color=validity, y=Mean))+
+  geom_line(aes(group=validity))+
+  geom_point()+
+  labs(x="Saliency", y = "ReactionTime")+
+  theme_classic()+
+  ylim(450,500)+
+  ggtitle("RT as function of saliency and validity")+
+  theme(plot.title = element_text(hjust = 0.5))+
+  theme(legend.title = element_text(size=12), legend.text= element_text(size=10))+
+  theme(axis.title = element_text(size=12),axis.text = element_text(size=10))
+
+
+#accounting for previous occurrences
+ggplot(mean_resp, aes(x=ResponseType, color=validity, y=Mean))+
+  geom_line(aes(group=validity))+
+  geom_point()+
+  labs(x="Response Type", y = "ReactionTime")+
+  facet_grid(.~Saliency)+
+  theme_classic()+
+  ylim(450,500)+
+  ggtitle("Rel bw  ResponseType based on saliency and validity")+
+  theme(plot.title = element_text(hjust = 0.5))+
+  theme(legend.title = element_text(size=12), legend.text= element_text(size=10))+
+  theme(axis.title = element_text(size=12),axis.text = element_text(size=10))
+```
+
+##Including the distance factor
+```{r}
+
+##Not complete yet. Have to debug
+# ggplot(Exp1data.agg, aes(x = ResponseType, y = RT_Trial_ifo, color=Saliency))+
+#   ylim(450,500)+
+#   geom_line(aes(group = Saliency))+
+#   geom_point()+
+#   facet_wrap(.~validity)+
+#   facet_wrap(.~Distance)
+#   theme_classic()+
+#   ggtitle("Rel bw  ResponseType based on saliency and validity for each distance")
+```
+

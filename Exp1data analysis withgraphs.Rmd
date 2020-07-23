@@ -1,0 +1,358 @@
+---
+output:
+  html_document: default
+  pdf_document: default
+---
+# **Preliminary Analysis of Exp1-Overshadowing**
+#### 3rd March 2020
+*Mrudula*
+
+
+Loading the libraries and setting up working directory
+```{r Libraryloading, message=FALSE}
+library(plyr)
+library(tidyverse)
+library(ez)
+library(schoRsch)
+library(lme4)
+library(nlme)
+library(data.table)
+
+#removing workspace objects
+rm(list = ls())
+
+
+#home office setup
+setwd("C:/FSU Jena_PhD/Exp1/Analysis")
+
+#setwd("D:/PhD/Exp1-Overshadowing/Analysis")
+```
+
+Then the dataframe is loaded from the directory 
+```{r}
+Exp1data <- read.csv("C:/FSU Jena_PhD/Exp1/Data/Exp1data.csv")
+#Exp1data <- read.csv("D:/PhD/Exp1-Overshadowing/Data/Exp1data.csv")
+#removing the first column named x
+Exp1data <- subset(Exp1data, select = -c(X))
+#renaming first column to subject
+names(Exp1data)[1] <- "Subject"
+```
+
+Preparing the data frame
+* Creating two columns that contains the RT and ACC values
+* Creating a new column with error rates
+* Removing the values from the practice trials
+```{r}
+#creating 3 columns for RT and ACC and error rate
+Exp1data$RT_Trial <- Exp1data$ExpDisplay.RT
+Exp1data$ACC_Trial <- Exp1data$ExpDisplay.ACC
+Exp1data$Errorrate <- (1 - Exp1data$ACC_Trial)*100
+
+#removing practice trials
+Exp1data <- Exp1data[!grepl("Practice", Exp1data$Condition),]
+```
+
+For ANOVA analysis to check for effect of salience and validity on test trials, learn trials are not required, hence removed
+```{r}
+ Exp1data <- Exp1data[!grepl("learn", Exp1data$Condition),]
+```
+
+Below you can find the summary of the Reaction Time data and calculating error percentage
+```{r}
+summary(Exp1data$RT_Trial)
+table(Exp1data$ACC_Trial)
+round(table(Exp1data$ACC_Trial)/nrow(Exp1data)*100, digits = 3)
+```
+
+
+### Removing RTs and Outliers
+
+Outliers are computed on an **individual** level 
+
+> Separate columns are created to modify RT values of individual farouts and individual outliers instead of changing it in the original RT_Trial column
+
+Updated summary values after removing outliers/farouts are given below
+```{r}
+#removing the RT of the trials that were inaccurate
+Exp1data$RT_Trial[Exp1data$ACC_Trial==0] <- NA
+
+#summary after removing incorrect trials
+summary(Exp1data$RT_Trial)
+
+#OUtliers
+#creating function to remove outliers and farouts
+computeTukeys <- function(x){
+  P25 <- quantile(x$RT, .25, na.rm = TRUE, type = 6) #type = 6 -> nimmt SPSS
+  P75 <- quantile(x$RT, .75, na.rm = TRUE, type = 6)
+  x$Outlier <- P75 + 1.5*(P75 - P25)
+  x$Farouts <- P75 + 3.0*(P75 - P25)
+  return(x)
+}
+
+#identifying RT farouts in the individual level
+Exp1data <- ddply(Exp1data, .(Subject), computeTukeys)
+summary(Exp1data$RT_Trial)
+
+#creating new column with RT trials after removing outliers
+Exp1data$RT_Trial_ifo <- Exp1data$RT_Trial
+Exp1data$RT_Trial_io <- Exp1data$RT_Trial
+Exp1data$RT_Trial_ifo[Exp1data$RT_Trial_ifo > Exp1data$Farouts|Exp1data$RT_Trial_ifo < 300] <- NA
+Exp1data$RT_Trial_io[Exp1data$RT_Trial_io > Exp1data$Outlier|Exp1data$RT_Trial_io < 300] <- NA
+summary(Exp1data$RT_Trial_ifo)
+summary(Exp1data$RT_Trial_io)
+```
+Now, a dataframe is created that contains aggregate values of the RT per condition and one for Error rate 
+```{r}
+Exp1.aggdata_ifo <- aggregate(data=Exp1data, RT_Trial_ifo~Subject+Saliency+validity, mean)
+Exp1.aggdata_io <- aggregate(data=Exp1data, RT_Trial_io~Subject+Saliency+validity, mean)
+Exp1.aggdata_ER <- aggregate(data = Exp1data,Errorrate~Subject+Saliency+validity, mean)
+#Exp1.aggdata_ifo$Errorrate <- Exp1.aggdata_ER$Errorrate
+
+#Removing participant data that contain high error rates---must check with Carina if we have a threshold
+# Exp1.aggdata_ifo <- Exp1.aggdata_ifo[!grepl(20, Exp1.aggdata_ifo$Subject),]
+# Exp1.aggdata_ifo <- Exp1.aggdata_ifo[!grepl(11, Exp1.aggdata_ifo$Subject),]
+# Exp1.aggdata_ifo <- Exp1.aggdata_ifo[!grepl(5, Exp1.aggdata_ifo$Subject),]
+
+
+## changing the variables to factors for ANOVA analysis
+Exp1.aggdata_ifo$Subject <- as.factor(Exp1.aggdata_ifo$Subject)
+Exp1.aggdata_ifo$Saliency <- as.factor(Exp1.aggdata_ifo$Saliency)
+Exp1.aggdata_ifo$validity <- as.factor(Exp1.aggdata_ifo$validity)
+
+Exp1.aggdata_ER$Subject <- as.factor(Exp1.aggdata_ER$Subject)
+Exp1.aggdata_ER$Saliency <- as.factor(Exp1.aggdata_ER$Saliency)
+Exp1.aggdata_ER$validity <- as.factor(Exp1.aggdata_ER$validity)
+
+write.csv(Exp1.aggdata_ifo, file="C:/FSU Jena_PhD/Exp1/Data/Exp1.aggdata_ifo.csv")
+write.csv(Exp1.aggdata_io, file = "C:/FSU Jena_PhD/Exp1/Data/Exp1.aggdata_io.csv")
+write.csv(Exp1.aggdata_ER, file = "C:/FSU Jena_PhD/Exp1/Data/Exp1.aggdata_ER.csv")
+
+Exp1.aggdata_ifo <- read.csv("C:/FSU Jena_PhD/Exp1/Data/Exp1.aggdata_ifo.csv")
+Exp1.aggdata_io <- read.csv("C:/FSU Jena_PhD/Exp1/Data/Exp1.aggdata_io.csv")
+```
+
+
+## Plotting the RT points to check for outliers and farouts
+```{r distribution plots, out.width = "50%", fig.width=5, fig.height=3, fig.show='hold', fig.align='center'}
+#first with farouts
+ggplot(Exp1data, aes(x=validity, y=RT_Trial,color = Saliency))+
+  geom_violin(alpha=0.2, position = position_dodge(1))+
+  geom_jitter(alpha = 0.3, aes(color=Saliency), position = position_jitterdodge(.5))+
+  geom_point(data = Exp1data, mapping = aes(x=validity, y=Farouts), type = "p", pch = 23, col = "cyan4", fill = "cyan4")+
+  ggtitle("Distribution of RTs with farouts marked")+
+  theme_bw()
+
+#with outliers
+ggplot(Exp1data, aes(x=validity, y=RT_Trial,color = Saliency))+
+  geom_violin(alpha=0.2, position = position_dodge(1))+
+  geom_jitter(alpha = 0.3, aes(color=Saliency), position = position_jitterdodge(.5))+
+  geom_point(data = Exp1data, mapping = aes(x=validity, y=Outlier), type = "p", pch = 23, col = "cyan4", fill = "cyan4")+
+  ggtitle("Distribution of RTs with outliers marked")+
+  theme_bw()
+
+```
+## **ANOVA calculations**
+
+* Analysing the data with the **individual farouts** being removed. Dependant variable is the Reaction Time and the main effects of validity and saliency are analysed along with the interaction
+
+```{r}
+anova_ifo <- ezANOVA(data = Exp1.aggdata_ifo,
+                    dv = RT_Trial_ifo,
+                    wid = Subject,
+                    within = .(Saliency,validity),
+                    detailed = TRUE)
+
+```
+The results of the ANOVA 
+```{r}
+anova_out(anova_ifo)
+```
+
+With 26 participants the p value for validity is 0.06 (farouts) and the interaction between saliency and validity is .17 
+
+
+To check how the error ates differ the ANOVa and graphs are given below
+```{r}
+#ANOVA analysis for error rates
+anova_ER <- ezANOVA(data = Exp1.aggdata_ER,
+                    dv = Errorrate,
+                    wid = Subject,
+                    within = .(Saliency, validity),
+                    detailed = TRUE)
+anova_out(anova_ER)
+
+
+```
+
+
+Here, a dataframe is created where it contains the mean values of RT within each condition (saliency and validity)
+```{r}
+
+
+mean_ifo <- ezStats(data =Exp1.aggdata_ifo, 
+                    dv = RT_Trial_ifo, 
+                    wid = Subject, 
+                    within = .(Saliency, validity)) 
+```
+* Performing the same ANOVa analysis with the **individual outliers** and check how it differs with the farouts
+
+```{r}
+anova_io <- ezANOVA(data = Exp1.aggdata_io,
+                    dv = RT_Trial_io,
+                    wid = Subject,
+                    within = .(Saliency,validity),
+                    detailed = TRUE)
+anova_out(anova_io)
+```
+
+Checking the aggregate mean value for the RT after removing outliers
+```{r}
+mean_io <- ezStats(data =Exp1.aggdata_io, 
+                    dv = RT_Trial_io, 
+                    wid = Subject, 
+                    within = .(Saliency, validity)) 
+```
+Mean value of error rates 
+
+```{r}
+mean_ER <- ezStats(data = Exp1.aggdata_ER,
+                   dv=Errorrate,
+                   wid = Subject,
+                   within = .(Saliency,validity))
+```
+
+
+### Plotting the interaction 
+
+1. Plot with Farouts removed
+```{r}
+## plotting the interaction with farouts
+ggplot(mean_ifo, aes(x=Saliency, color=validity, y=Mean))+
+  geom_line(aes(group=validity))+
+  geom_point()+
+  ylim(470,500)+
+  labs(x="Saliency", y = "ReactionTime")+
+  theme_classic()+
+  ggtitle("Mean of RTs for valid and invalid trials")+
+  theme(plot.title = element_text(hjust = 0.5))+
+  theme(legend.title = element_text(size=14), legend.text= element_text(size=12))+
+  theme(axis.title = element_text(size=14),axis.text = element_text(size=12))
+```
+
+2. Plot with outliers removed
+```{r}
+ggplot(mean_io, aes(x=Saliency, color=validity, y=Mean))+
+  geom_line(aes(group=validity))+
+  geom_point()+
+  ylim(450,500)+
+  labs(x="Saliency", y = "ReactionTime")+
+  theme_classic()+
+  ggtitle("Mean of RTs(outliers) for valid and invalid trials")
+```
+
+3. Plot showing Error rates for validity and saliency
+```{r}
+ggplot(Exp1.aggdata_ER, aes(x=validity, color=Saliency, y=Errorrate))+
+  geom_line(aes(group=Saliency))+
+  geom_point()+
+  ylim(0,30)+
+  labs(x="validity", y = "ErrorRate")+
+  theme_bw()+
+  ggtitle("ErrorRates for valid and invalid trials")
+```
+Creating aplot to show the mean difference effect.
+1. Subtract mean values of valid and invalid trials for salient condition and non salient condition
+2. So x axis will have saliency and y axis will have mean difference
+
+```{r}
+mean_effect <- reshape(mean_ifo, direction = "wide", timevar = "validity", idvar = "Saliency")
+mean_effect$Meandiff <- mean_effect$Mean.invalid - mean_effect$Mean.valid
+```
+
+#### *Plot to show the effect*
+
+```{r}
+ggplot(mean_effect, aes(x= Saliency, y = Meandiff, fill = Saliency))+
+  geom_bar(stat = "identity")+
+  ylim(0,10)+
+  theme_classic()+
+  theme(plot.title = element_text(hjust = 0.5))+
+  labs(x = "Saliency", y=" Mean RT Difference between valid and invalid Trials")+
+  ggtitle("Mean difference between invalid and valid trials across Saliency")
+```
+
+
+#### *Heres's a plot that shows the interaction*
+```{r interactionplot}
+
+ezPlot(data = Exp1.aggdata_ifo, 
+       dv = RT_Trial_ifo, 
+       wid = Subject, 
+       within = .(Saliency,validity), 
+       x=validity, levels = list(validity = list(new_order = c('valid', 'invalid'))),
+       row =Saliency,
+)
+
+```
+
+
+### **Plot with means**
+
+This is a different representation of the RT to check how the mean looks like and from the looks of it, participants are fastest while responding to valid salient trials. 
+```{r barplot, fig.width=8, fig.height=6}
+ggplot(Exp1.aggdata_io)+
+  aes(x= validity, y = RT_Trial_io, fill = Saliency) +
+  geom_boxplot(alpha = .2, position = position_dodge())+
+  geom_jitter(alpha = .5, aes(fill=Saliency), position = position_jitterdodge())+
+  labs(x="Validity", y = "Reaction time in ms")+
+  ggtitle("Mean RTs for valid and invalid trials between salient conditions")+
+  theme_bw()
+```
+
+
+
+
+
+
+#### Removing trials where there was stimulus repetition
+```{r}
+Exp1data$RT_Trial_SR <- Exp1data$RT_Trial_ifo
+Exp1data$RT_Trial_SR[Exp1data$PrevOccurence == "immediate"]<-NA
+#removing learning trials to analyze ANOVA 
+Exp1data$RT_Trial_SR[Exp1data$Condition=="learn"]<-NA
+summary(Exp1data$RT_Trial_SR)
+```
+##ANOVA after stimulus repeated trials are controlled for
+```{r}
+aggdata_stimrep <- aggregate(data = Exp1data, RT_Trial_ifo~Subject+validity+Saliency,mean)
+aggdata_stimrep$Subject <- as.factor(aggdata_stimrep$Subject)
+aggdata_stimrep$Saliency <- as.factor(aggdata_stimrep$Saliency)
+#anova calc
+anova_stimrep <- ezANOVA(data=aggdata_stimrep,
+                         dv=RT_Trial_ifo,
+                         wid=Subject,
+                         within = .(Saliency, validity),
+                         detailed = TRUE)
+anova_out(anova_stimrep)
+
+```
+##Plotting the means 
+
+```{r}
+mean_Stimrep <- ezStats(data = aggdata_stimrep,
+                        dv = RT_Trial_ifo, 
+                        wid = Subject, 
+                        within = .(Saliency, validity))
+
+ggplot(mean_Stimrep, aes(x=validity, color=Saliency, y=Mean))+
+  geom_line(aes(group=Saliency))+
+  geom_point()+
+  ylim(470,500)+
+  labs(x="validity", y = "ReactionTime")+
+  theme_classic()+
+  ggtitle("Main effect of validity after removing StimRep trials")
+
+
+```
+
+

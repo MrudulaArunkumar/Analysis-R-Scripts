@@ -1,0 +1,184 @@
+# **Preliminary Analysis of Exp1-Overshadowing**
+#### 14th Feb 2020
+*Mrudula*
+
+
+Loading the libraries and setting up working directory
+```{r Libraryloading, message=FALSE}
+library(plyr)
+library(tidyverse)
+library(ez)
+library(schoRsch)
+library(lme4)
+library(nlme)
+library(data.table)
+
+#removing workspace objects
+rm(list = ls())
+setwd("D:/PhD/Exp1-Overshadowing/Analysis")
+```
+
+Then the dataframe is loaded from the directory 
+```{r}
+Exp1data <- read.csv("D:/PhD/Exp1-Overshadowing/Data/Exp1data.csv")
+#removing the first column named x
+Exp1data <- subset(Exp1data, select = -c(X))
+#renaming first column to subject
+names(Exp1data)[1] <- "Subject"
+```
+
+Preparing the data frame
+* Creating two columns that contains the RT and ACC values
+* Creating a new column with error rates
+* Removing the values from the practic trials
+```{r}
+#creating 2 columns for RT and ACC
+Exp1data$RT_Trial <- Exp1data$ExpDisplay.RT
+Exp1data$ACC_Trial <- Exp1data$ExpDisplay.ACC
+Exp1data$Errorrate <- 1 - Exp1data$ACC_Trial
+
+#removing practice trials
+Exp1data <- Exp1data[!grepl("Practice", Exp1data$Condition),]
+```
+
+For ANOVA analysis to check for effect of salience and validity on test trials, learn trials are not required, hence removed
+```{r}
+ Exp1data <- Exp1data[!grepl("learn", Exp1data$Condition),]
+```
+
+Below you can find the summary of the Reaction Time data and calculating error percentage
+```{r}
+summary(Exp1data$RT_Trial)
+table(Exp1data$ACC_Trial)
+round(table(Exp1data$ACC_Trial)/nrow(Exp1data)*100, digits = 3)
+```
+
+### Removing RTs and Outliers
+
+Outliers are computed on an individual level 
+
+> Separate columns are created to modify RT values of individual farouts and individual outliers instead of changing it in the original RT_Trial column
+
+Updated summary values after removing outliers/farouts are given below
+```{r}
+#removing the RT of the trials that were inaccurate
+Exp1data$RT_Trial[Exp1data$ACC_Trial==0] <- NA
+
+#summary after removing incorrect trials
+summary(Exp1data$RT_Trial)
+
+#OUtliers
+#creating function to remove outliers and farouts
+computeTukeys <- function(x){
+  P25 <- quantile(x$RT, .25, na.rm = TRUE, type = 6) #type = 6 -> nimmt SPSS
+  P75 <- quantile(x$RT, .75, na.rm = TRUE, type = 6)
+  x$Outlier <- P75 + 1.5*(P75 - P25)
+  x$Farouts <- P75 + 3.0*(P75 - P25)
+  return(x)
+}
+
+#identifying RT farouts in the individual level
+Exp1data <- ddply(Exp1data, .(Subject), computeTukeys)
+summary(Exp1data$RT_Trial)
+
+#creating new column with RT trials after removing outliers
+Exp1data$RT_Trial_ifo <- Exp1data$RT_Trial
+Exp1data$RT_Trial_io <- Exp1data$RT_Trial
+Exp1data$RT_Trial_ifo[Exp1data$RT_Trial_ifo > Exp1data$Farouts|Exp1data$RT_Trial_ifo < 300] <- NA
+Exp1data$RT_Trial_io[Exp1data$RT_Trial_io > Exp1data$Outlier|Exp1data$RT_Trial_io < 300] <- NA
+summary(Exp1data$RT_Trial_ifo)
+summary(Exp1data$RT_Trial_io)
+```
+Now, a dataframe is created that contains aggregate values of the RT per condition 
+```{r}
+Exp1.aggdata_ifo <- aggregate(data=Exp1data, RT_Trial_ifo~Subject+Saliency+validity, mean)
+Exp1.aggdata_io <- aggregate(data=Exp1data, RT_Trial_io~Subject+Saliency+validity, mean)
+
+## changing the variables to factors for ANOVA analysis
+Exp1.aggdata_io$Subject <- as.factor(Exp1.aggdata_io$Subject)
+Exp1.aggdata_io$Saliency <- as.factor(Exp1.aggdata_io$Saliency)
+Exp1.aggdata_io$validity <- as.factor(Exp1.aggdata_io$validity)
+```
+
+## **ANOVA calculations**
+
+Analysing the data with the individual farouts being removed. Dependant variable is the Reaction Time and the main effects of validity and saliency are analysed along with the interaction
+
+```{r}
+anova_io <- ezANOVA(data = Exp1.aggdata_io,
+                    dv = RT_Trial_io,
+                    wid = Subject,
+                    within = .(Saliency,validity),
+                    detailed = TRUE)
+```
+The results of the ANOVA 
+```{r}
+anova_out(anova_io)
+```
+
+With 22 participants the p value has increased to .094 (farouts) and .147 (outliers) 
+
+#### *Heres's a plot that shows the interaction*
+```{r interactionplot, fig.width=8, fig.height=6}
+ezPlot(data = Exp1.aggdata_io, 
+       dv = RT_Trial_io, 
+       wid = Subject, 
+       within = .(Saliency,validity), 
+       x=validity, levels = list(validity = list(new_order = c('valid', 'invalid'))),
+       row =Saliency,
+)
+
+```
+
+Here, a dataframe is created where it contains the mean values of RT within each condition (saliency and validity)
+```{r}
+
+mean_ifo <- ezStats(data =Exp1.aggdata_ifo, 
+                    dv = RT_Trial_ifo, 
+                    wid = Subject, 
+                    within = .(Saliency, validity)) 
+```
+### **Plot with means**
+
+This is a different representation of the RT to check how the mean looks like and from the looks of it, participants are fastest while responding to valid salient trials. 
+```{r barplot, fig.width=8, fig.height=6}
+ggplot(Exp1.aggdata_io)+
+  aes(x= validity, y = RT_Trial_io, fill = Saliency) +
+  geom_boxplot(alpha = .2, position = position_dodge())+
+  geom_jitter(alpha = .5, aes(fill=Saliency), position = position_jitterdodge())+
+  labs(x="Validity", y = "Reaction time in ms")+
+  ggtitle("Mean RTs for valid and invalid trials between salient conditions")+
+  theme_bw()
+```
+
+Controlling for stimulus repetition
+```{r}
+
+summary(Exp1data$RT_Trial)
+Exp1data$stimRep<-ifelse(shift(Exp1data$Distractor1, n = 1, type = "lag") == Exp1data$Distractor1, 1, 0)
+    table(Exp1data$stimRep)
+    
+    #exclude stim rep trials from CL data
+    
+    Exp1data$RT_Trial[Exp1data$stimRep==1] <- NA
+    summary(Exp1data$RT_Trial)
+    #total NA's (ifo): 2711
+    
+    #aggregate####
+    data.agg <- aggregate(data = Exp1data, RT_Trial ~ Saliency + validity + Subject, mean)
+```
+
+Anova after removing stimulus repeated trials
+```{r}
+    data.agg$Subject <- as.factor(data.agg$Subject)    
+    data.agg$Saliency <- as.factor(data.agg$Saliency) 
+    
+Anova_SRB <- ezANOVA(data = data.agg,
+                     dv = RT_Trial,
+                     wid = Subject,
+                     within = .(Saliency, validity),
+                     detailed = TRUE)
+anova_out(Anova_SRB)
+                     
+```
+
