@@ -20,18 +20,12 @@ library(data.table)
 
 #removing workspace objects
 rm(list = ls())
-
-
-#home office setup
-setwd("C:/FSU Jena_PhD/Exp1/Analysis")
-
-#setwd("D:/PhD/Exp1-Overshadowing/Analysis")
+setwd("D:/PhD/Exp1-Overshadowing/Analysis")
 ```
 
 Then the dataframe is loaded from the directory 
 ```{r}
-Exp1data <- read.csv("C:/FSU Jena_PhD/Exp1/Data/Exp1data.csv")
-#Exp1data <- read.csv("D:/PhD/Exp1-Overshadowing/Data/Exp1data.csv")
+Exp1data <- read.csv("D:/PhD/Exp1-Overshadowing/Data/Exp1data.csv")
 #removing the first column named x
 Exp1data <- subset(Exp1data, select = -c(X))
 #renaming first column to subject
@@ -122,15 +116,7 @@ Exp1.aggdata_ifo$validity <- as.factor(Exp1.aggdata_ifo$validity)
 Exp1.aggdata_ER$Subject <- as.factor(Exp1.aggdata_ER$Subject)
 Exp1.aggdata_ER$Saliency <- as.factor(Exp1.aggdata_ER$Saliency)
 Exp1.aggdata_ER$validity <- as.factor(Exp1.aggdata_ER$validity)
-
-write.csv(Exp1.aggdata_ifo, file="C:/FSU Jena_PhD/Exp1/Data/Exp1.aggdata_ifo.csv")
-write.csv(Exp1.aggdata_io, file = "C:/FSU Jena_PhD/Exp1/Data/Exp1.aggdata_io.csv")
-write.csv(Exp1.aggdata_ER, file = "C:/FSU Jena_PhD/Exp1/Data/Exp1.aggdata_ER.csv")
-
-Exp1.aggdata_ifo <- read.csv("C:/FSU Jena_PhD/Exp1/Data/Exp1.aggdata_ifo.csv")
-Exp1.aggdata_io <- read.csv("C:/FSU Jena_PhD/Exp1/Data/Exp1.aggdata_io.csv")
 ```
-
 
 ## Plotting the RT points to check for outliers and farouts
 ```{r distribution plots, out.width = "50%", fig.width=5, fig.height=3, fig.show='hold', fig.align='center'}
@@ -169,7 +155,6 @@ anova_out(anova_ifo)
 ```
 
 With 26 participants the p value for validity is 0.06 (farouts) and the interaction between saliency and validity is .17 
-
 
 To check how the error ates differ the ANOVa and graphs are given below
 ```{r}
@@ -227,11 +212,11 @@ mean_ER <- ezStats(data = Exp1.aggdata_ER,
 1. Plot with Farouts removed
 ```{r}
 ## plotting the interaction with farouts
-ggplot(mean_ifo, aes(x=Saliency, color=validity, y=Mean))+
-  geom_line(aes(group=validity))+
+ggplot(mean_ifo, aes(x=validity, color=Saliency, y=Mean))+
+  geom_line(aes(group=Saliency))+
   geom_point()+
   ylim(470,500)+
-  labs(x="Saliency", y = "ReactionTime")+
+  labs(x="Validity", y = "ReactionTime")+
   theme_classic()+
   ggtitle("Mean of RTs for valid and invalid trials")+
   theme(plot.title = element_text(hjust = 0.5))+
@@ -241,13 +226,13 @@ ggplot(mean_ifo, aes(x=Saliency, color=validity, y=Mean))+
 
 2. Plot with outliers removed
 ```{r}
-ggplot(mean_io, aes(x=Saliency, color=validity, y=Mean))+
-  geom_line(aes(group=validity))+
+ggplot(mean_io, aes(x=validity, color=Saliency, y=Mean))+
+  geom_line(aes(group=Saliency))+
   geom_point()+
-  ylim(450,500)+
-  labs(x="Saliency", y = "ReactionTime")+
-  theme_classic()+
-  ggtitle("Mean of RTs(outliers) for valid and invalid trials")
+  ylim(470,500)+
+  labs(x="validity", y = "ReactionTime")+
+  theme_bw()+
+  ggtitle("Mean of RTs for valid and invalid trials")
 ```
 
 3. Plot showing Error rates for validity and saliency
@@ -312,47 +297,34 @@ ggplot(Exp1.aggdata_io)+
 
 
 
-
-
-#### Removing trials where there was stimulus repetition
+Controlling for stimulus repetition
 ```{r}
-Exp1data$RT_Trial_SR <- Exp1data$RT_Trial_ifo
-Exp1data$RT_Trial_SR[Exp1data$PrevOccurence == "immediate"]<-NA
-#removing learning trials to analyze ANOVA 
-Exp1data$RT_Trial_SR[Exp1data$Condition=="learn"]<-NA
-summary(Exp1data$RT_Trial_SR)
-```
-##ANOVA after stimulus repeated trials are controlled for
-```{r}
-aggdata_stimrep <- aggregate(data = Exp1data, RT_Trial_ifo~Subject+validity+Saliency,mean)
-aggdata_stimrep$Subject <- as.factor(aggdata_stimrep$Subject)
-aggdata_stimrep$Saliency <- as.factor(aggdata_stimrep$Saliency)
-#anova calc
-anova_stimrep <- ezANOVA(data=aggdata_stimrep,
-                         dv=RT_Trial_ifo,
-                         wid=Subject,
-                         within = .(Saliency, validity),
-                         detailed = TRUE)
-anova_out(anova_stimrep)
 
-```
-##Plotting the means 
-
-```{r}
-mean_Stimrep <- ezStats(data = aggdata_stimrep,
-                        dv = RT_Trial_ifo, 
-                        wid = Subject, 
-                        within = .(Saliency, validity))
-
-ggplot(mean_Stimrep, aes(x=validity, color=Saliency, y=Mean))+
-  geom_line(aes(group=Saliency))+
-  geom_point()+
-  ylim(470,500)+
-  labs(x="validity", y = "ReactionTime")+
-  theme_classic()+
-  ggtitle("Main effect of validity after removing StimRep trials")
-
-
+summary(Exp1data$RT_Trial)
+Exp1data$stimRep<-ifelse(shift(Exp1data$Distractor1, n = 1, type = "lag") == Exp1data$Distractor1, 1, 0)
+    table(Exp1data$stimRep)
+    
+    #exclude stim rep trials from CL data
+    
+    Exp1data$RT_Trial[Exp1data$stimRep==1] <- NA
+    summary(Exp1data$RT_Trial)
+    #total NA's (ifo): 2711
+    
+    #aggregate####
+    data.agg <- aggregate(data = Exp1data, RT_Trial ~ Saliency + validity + Subject, mean)
 ```
 
+Anova after removing stimulus repeated trials
+```{r}
+    data.agg$Subject <- as.factor(data.agg$Subject)    
+    data.agg$Saliency <- as.factor(data.agg$Saliency) 
+    
+Anova_SRB <- ezANOVA(data = data.agg,
+                     dv = RT_Trial,
+                     wid = Subject,
+                     within = .(Saliency, validity),
+                     detailed = TRUE)
+anova_out(Anova_SRB)
+                     
+```
 
