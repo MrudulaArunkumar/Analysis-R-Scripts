@@ -19,6 +19,7 @@ library(nlme)
 library(data.table)
 library(knitr)
 library(pander)
+library(BayesFactor)
 
 #clearing up workspace 
 rm(list=ls())
@@ -359,7 +360,12 @@ standard_anova_fo <- ezANOVA(Exp1agg_Standard_fo,
 anova_out(standard_anova_fo)
 panderOptions('table.split.table',300)
 pander(standard_anova_fo, style = 'rmarkdown', caption = "Standard ANOVA table: RT(farouts) as a function of Saliency and Validity", split.table = Inf)
-
+#checking results with BAYES Factor
+Bayesian <- anovaBF(RT_ifo~Saliency*Validity, data = Exp1agg_Standard_fo)
+Bayesian
+plot(Bayesian)
+Bayesian2 <- anovaBF(RT_ifo~Saliency*Validity, data = Exp1agg_Standard_fo, whichModels = "withmain")
+Bayesian2
 #outliers
 standard_anova_o <- ezANOVA(data = Exp1agg_Standard_o,
                     dv = RT_io,
@@ -372,16 +378,16 @@ Plots of the data for both outliers and farouts
 ```{r PlotsafterANOVA}
 #Plot for farouts
 
-ggplot(aggmeanSV_fo, aes(x=Saliency, color=Validity, y=Mean))+
-  geom_line(aes(group=Validity))+
+ggplot(aggmeanSV_fo, aes(x=Validity, color=Saliency, y=Mean))+
+  geom_line(aes(group=Saliency))+
   geom_point()+
   labs(x="Saliency", y = "ReactionTime")+
   theme_classic()+
   ylim(600,650)+
   ggtitle("Standard Analysis: RT(farouts) as function of saliency and validity")+
   theme(plot.title = element_text(hjust = 0.5))+
-  theme(legend.title = element_text(size=12), legend.text= element_text(size=10))+
-  theme(axis.title = element_text(size=12),axis.text = element_text(size=10))
+  theme(legend.title = element_text(size=14), legend.text= element_text(size=12))+
+  theme(axis.title = element_text(size=14),axis.text = element_text(size=12))
 
 #plot for outliers
 
