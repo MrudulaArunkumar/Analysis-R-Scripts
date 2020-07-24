@@ -37,7 +37,7 @@ Exp1data_OL <- read.csv("D:/PhD/Exp1-Overshadowing/Data/Exp1data_online_fullset.
 ```
 Removing the columns that are not important such as thisN and thisRepN and so on.Next is to split the RT column because each column may contain more than one value and we only need to record the first RT response. RTs should also be changed to numberic as they are represented as strings initially
 
-```{r cleandata}
+```{r cleandata, message = FALSE}
 #removing unnecessary columns
 
 Exp1data_OL <- Exp1data_OL %>%
@@ -264,12 +264,12 @@ table(Exp1data_OL$Condition)
 #                      wid = participant,
 #                      within = .(Saliency, Validity))
 
-explore_anova_fo <- ezANOVA(Exploreagg,
-                    dv = RT_ifo,
-                    wid = participant,
-                    within = .(Saliency,Validity),
-                    detailed = TRUE)
-anova_out(explore_anova_fo)
+# explore_anova_fo <- ezANOVA(Exploreagg,
+#                     dv = RT_ifo,
+#                     wid = participant,
+#                     within = .(Saliency,Validity),
+#                     detailed = TRUE)
+# anova_out(explore_anova_fo)
 
 ```
 
@@ -288,7 +288,7 @@ Exp1agg_fo$Saliency <- as.factor(Exp1agg_fo$Saliency)
 Exp1agg_fo$Validity <- as.factor(Exp1agg_fo$Validity)
 Exp1agg_fo$ResponseType <- as.factor(Exp1agg_fo$ResponseType)
 
-#aggregate means of farouts
+#aggregate means of farouts ERROR RELATED TO DESIGN NOT BEING BALANCED
  # aggmeanSV_fo <- ezStats(data = Exp1agg_fo,
  #                      dv = RT_ifo,
  #                      wid = participant,
@@ -364,8 +364,7 @@ pander(standard_anova_fo, style = 'rmarkdown', caption = "Standard ANOVA table: 
 Bayesian <- anovaBF(RT_ifo~Saliency*Validity, data = Exp1agg_Standard_fo)
 Bayesian
 plot(Bayesian)
-Bayesian2 <- anovaBF(RT_ifo~Saliency*Validity, data = Exp1agg_Standard_fo, whichModels = "withmain")
-Bayesian2
+
 #outliers
 standard_anova_o <- ezANOVA(data = Exp1agg_Standard_o,
                     dv = RT_io,
