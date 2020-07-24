@@ -25,15 +25,15 @@ library(BayesFactor)
 rm(list=ls())
 
 #setting up working directory at home office
-#setwd("C:/FSU Jena_PhD/Exp1/Analysis")
+setwd("C:/FSU Jena_PhD/Exp1/Analysis")
 
 #loading the combined datafile
-#Exp1data_OL <- read.csv("C:/FSU Jena_PhD/Exp1/Data/Exp1-Prolific/Exp1data_online_fullset.csv")
+Exp1data_OL <- read.csv("C:/FSU Jena_PhD/Exp1/Data/Exp1-Prolific/Exp1data_online_fullset.csv")
 
 #Office set up
-setwd("D:/PhD/Exp1-Overshadowing/Analysis")
+#setwd("D:/PhD/Exp1-Overshadowing/Analysis")
 #load from office
-Exp1data_OL <- read.csv("D:/PhD/Exp1-Overshadowing/Data/Exp1data_online_fullset.csv")
+#Exp1data_OL <- read.csv("D:/PhD/Exp1-Overshadowing/Data/Exp1data_online_fullset.csv")
 ```
 Removing the columns that are not important such as thisN and thisRepN and so on.Next is to split the RT column because each column may contain more than one value and we only need to record the first RT response. RTs should also be changed to numberic as they are represented as strings initially
 
@@ -293,9 +293,19 @@ Exp1agg_fo <- Exp1agg_fo %>%
 
 ggplot(Exp1agg_fo, aes(x=ResponseType, y=RT_ifo))+
   geom_violin(aes(fill = Validity), alpha = 0.2)+
-  geom_jitter(aes(colour=Validity, group = Validity))+
-  facet_grid(.~Saliency)
+  geom_point(aes(colour=Validity, group = Validity),position = position_jitterdodge())+
+  ylab("Reaction Time")+
+  facet_grid(.~Saliency)+
+  theme_classic()+
+  ggtitle("Distribution of RT(farouts) based on Response Type for immediate occurrences")
 
+bindingAnova <- ezANOVA(Exp1agg_fo,
+                        dv = RT_ifo,
+                        wid = participant,
+                        within = .(Validity, ResponseType),
+                        detailed = TRUE)
+bindmodel <- lmer(RT_ifo~1+ResponseType+(1|Saliency)+(1|Validity)+(1|participant), data = Exp1agg_fo)
+summary(bindmodel)
 
 pander(table(Exp1agg_fo$Distance, Exp1agg_fo$ResponseType),style = 'rmarkdown', caption = "Distance x ResponseType")
 
@@ -318,6 +328,8 @@ aggmean_fo <- aggregate(data=Exp1agg_fo, RT_ifo~participant+Saliency+Validity+Re
 
 
 Exp1agg_o <- aggregate(data = Exp1data_OL, RT_io~participant+Saliency+Validity+ResponseType+Distance, mean)
+Exp1agg_o <- Exp1agg_o %>%
+  filter(Distance == 1)
 
 pander(table(Exp1agg_o$Distance, Exp1agg_o$ResponseType),style = 'rmarkdown', caption = "Distance x ResponseType")
 
@@ -326,6 +338,25 @@ Exp1agg_o$participant <- as.factor(Exp1agg_o$participant)
 Exp1agg_o$Saliency <- as.factor(Exp1agg_o$Saliency)
 Exp1agg_o$Validity <- as.factor(Exp1agg_o$Validity)
 Exp1agg_o$ResponseType <- as.factor(Exp1agg_o$ResponseType)
+Exp1agg_o$Distance <- as.factor(Exp1agg_o$Distance)
+
+ggplot(Exp1agg_o, aes(x=ResponseType, y=RT_io))+
+  geom_violin(aes(fill = Validity), alpha = 0.2)+
+  geom_point(aes(colour=Validity, group = Validity),position = position_jitterdodge())+
+  ylab("Reaction Time")+
+  facet_grid(.~Saliency)+
+  theme_classic()+
+  ggtitle("Distribution of RT(outliers) based on Response Type for immediate occurrences")
+
+bindingAnova <- ezANOVA(Exp1agg_o,
+                        dv = RT_io,
+                        wid = participant,
+                        within = .(Validity, ResponseType),
+                        detailed = TRUE)
+bindmodel <- lmer(RT_io~1+(ResponseType+Saliency+Validity)+(1|participant), data = Exp1agg_o)
+summary(bindmodel)
+anova(bindmodel)
+
 
 ##THROWS ERROR HAVE TO CHECK
 #aggregate means of farouts without distance and REsponse Type
@@ -369,7 +400,7 @@ aggmeanSV_o <- ezStats(data = Exp1agg_Standard_o,
                      within = .(Saliency, Validity))
 
 ```
-##*ANOVA & PLOTS* 
+## *ANOVA & PLOTS* 
 
 #### 1. Standard Analysis ANOVA with plot
 ```{r Stdanalysis}
