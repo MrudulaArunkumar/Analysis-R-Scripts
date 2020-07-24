@@ -20,9 +20,9 @@ library(pander)
 #removing workspace objects
 rm(list = ls())
 #officesetup
-#setwd("D:/PhD/Exp1-Overshadowing/Analysis")
+setwd("D:/PhD/Exp1-Overshadowing/Analysis")
 #home office setup
-setwd("C:/FSU Jena_PhD/Exp1/Analysis")
+#setwd("C:/FSU Jena_PhD/Exp1/Analysis")
 
 #Carina
 #setwd("C:/Users/carina/Desktop/Wichtige Docs/Mrudula")
@@ -36,8 +36,8 @@ include_graphics("ExpDesign.jpg")
 ```
 
 ```{r loadingdf, echo = FALSE}
-#mrudula
-Exp1data <- read.csv("C:/FSU Jena_PhD/Exp1/Data/Exp1data.csv")
+#mrudula office
+Exp1data <- read.csv("D:/PhD/Exp1-Overshadowing/Data/Exp1data.csv")
 
 #Exp1data <- read.csv("C:/Users/carina/Desktop/Wichtige Docs/Mrudula/Exp1data.csv")
 #removing the first column named x
@@ -305,7 +305,7 @@ standard_anova_ifo <- ezANOVA(Standard.agg_ifo,
                     wid = Subject,
                     within = .(Saliency,validity),
                     detailed = TRUE)
-# anova_out(standard_anova_ifo)
+anova_out(standard_anova_ifo)
 panderOptions('table.split.table',300)
 pander(standard_anova_ifo, style = 'rmarkdown', caption = "Standard ANOVA table: RT(farouts) as a function of Saliency and Validity", split.table = Inf)
 

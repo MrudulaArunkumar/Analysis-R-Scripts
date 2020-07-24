@@ -59,8 +59,17 @@ Exp1data_OL$RT_Trials <- Exp1data_OL$RT_Trials %>%
   str_replace_all("\\[|\\]", "")%>%
   as.numeric(Exp1data_OL$RT_Trials)
 Exp1data_OL$RT_Trials <- 1000*(Exp1data_OL$RT_Trials)
-Exp1data_OL$RT_Trials <- as.integer(Exp1data_OL$RT_Trials)
+Exp1data_OL$PreTargetDisplayTime <- 1000 * Exp1data_OL$PreTargetDisplayTime
+Exp1data_OL$RT_Trials <- as.double(Exp1data_OL$RT_Trials)
+names(Exp1data_OL)[names(Exp1data_OL)=="RT_Trials"]<- "Old_RT"
+Exp1data_OL$RT_Trials <- Exp1data_OL$Old_RT
 
+#adjusting RT
+Exp1data_OL$RT_Trials <- 400+Exp1data_OL$RT_Trials #adding the 400ms that was coded in psychopy after which RT is evaluated
+#removing the value of fixation
+Exp1data_OL$RT_Trials <- Exp1data_OL$RT_Trials - 200
+#Removing the preinterval display duration
+Exp1data_OL$RT_Trials <- Exp1data_OL$RT_Trials - Exp1data_OL$PreTargetDisplayTime
 #making sure screenbg is entered in every cell
 Exp1data_OL <- Exp1data_OL%>%group_by(participant)%>%fill(Screen_bg,.direction = "down")
 
@@ -93,7 +102,7 @@ Exp1data_OL<- Exp1data_OL%>%drop_na(RT_Trials)
 
 Saving this cleaned and prepared data frame
 ```{r}
-#write.csv(Exp1data_OL, file = "Exp1data_Online_cleaned.csv")
+write.csv(Exp1data_OL, file = "Exp1data_Online_cleaned.csv")
 ```
 
 ### Descriptive Statistics
@@ -289,11 +298,14 @@ Exp1agg_fo$Validity <- as.factor(Exp1agg_fo$Validity)
 Exp1agg_fo$ResponseType <- as.factor(Exp1agg_fo$ResponseType)
 
 #aggregate means of farouts ERROR RELATED TO DESIGN NOT BEING BALANCED
- # aggmeanSV_fo <- ezStats(data = Exp1agg_fo,
- #                      dv = RT_ifo,
- #                      wid = participant,
- #                      within = .(Saliency, Validity,ResponseType))
- # ezDesign(Exp1agg_fo,Validity,Saliency, col=RT_ifo, row = ResponseType)
+aggmean_fo <- aggregate(data=Exp1agg_fo, RT_ifo~participant+Saliency+Validity+ResponseType, mean)
+#agg <- aggregate(data=Exp1agg_fo,RT_ifo~Saliency+Validity+ResponseType,mean)
+  aggmean_fo <- ezStats(data = Exp1agg_fo,
+                       dv = RT_ifo,
+                       wid = participant,
+                       within = .(Saliency, Validity,ResponseType))
+  
+  ezDesign(Exp1agg_fo,Validity,Saliency, col=RT_ifo, row = ResponseType)
 
 
 Exp1agg_o <- aggregate(data = Exp1data_OL, RT_io~participant+Saliency+Validity+ResponseType+Distance, mean)
@@ -382,7 +394,7 @@ ggplot(aggmeanSV_fo, aes(x=Validity, color=Saliency, y=Mean))+
   geom_point()+
   labs(x="Saliency", y = "ReactionTime")+
   theme_classic()+
-  ylim(600,650)+
+  ylim(400,450)+
   ggtitle("Standard Analysis: RT(farouts) as function of saliency and validity")+
   theme(plot.title = element_text(hjust = 0.5))+
   theme(legend.title = element_text(size=14), legend.text= element_text(size=12))+
@@ -395,7 +407,7 @@ ggplot(aggmeanSV_o, aes(x=Saliency, color=Validity, y=Mean))+
   geom_point()+
   labs(x="Saliency", y = "ReactionTime")+
   theme_classic()+
-  ylim(600,650)+
+  ylim(400,450)+
   ggtitle("Standard Analysis: RT(Outliers) as function of saliency and validity")+
   theme(plot.title = element_text(hjust = 0.5))+
   theme(legend.title = element_text(size=12), legend.text= element_text(size=10))+
