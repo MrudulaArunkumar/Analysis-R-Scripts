@@ -224,6 +224,7 @@ mean_resp_ifo <- ezStats(data = Exp1data.agg_RespType_ifo,
                      dv = RT_Trial_ifo,
                      wid = Subject,
                      within = .(Saliency, validity, ResponseType))
+ezDesign(Exp1data.agg_RespType_ifo, x = ResponseType, y = Saliency, row = validity)
 
 pander(mean_resp_ifo, style = 'rmarkdown', caption = "Mean of RTs(farouts) with Saliency, ResponseType and Validity as factors")
 ```
