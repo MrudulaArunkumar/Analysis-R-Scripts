@@ -30,7 +30,7 @@ rm(list=ls())
 #Exp1data_OL <- read.csv("C:/FSU Jena_PhD/Exp1/Data/Exp1-Prolific/Exp1data_online_fullset.csv")
 
 #Office set up
-setwd("D:/PhD/Exp1-Overshadowing/Analysis")
+setwd("D:/PhD/Exp1-Overshadowing/Analysis/R Scripts")
 #load from office
 Exp1data_OL <- read.csv("D:/PhD/Exp1-Overshadowing/Data/Exp1data_online_fullset.csv")
 ```
@@ -117,8 +117,8 @@ sum(is.na(Exp1data_OL$RT_Trials))
 Checking how the RTs are based on accuracy 
 
 ```{r}
-ggplot(Exp1data_OL, aes(x=Validity, y=RT_Trials))+
-  geom_jitter(aes(color=ACC_Trials), alpha = 0.5)+
+ggplot(Exp1data_OL, aes(x=ACC_Trials, y=RT_Trials))+
+  geom_jitter(aes(color=Validity), alpha = 0.5)+
   # geom_violin(aes(fill=Validity, group = ACC_Trials), alpha = 0.8)+
   ggtitle("RT vs ACC")
 ```
@@ -165,6 +165,7 @@ pander(summary(Exp1data_OL$RT_io), style = 'rmarkdown', caption = "Summary of RT
 ggplot(Exp1data_OL, aes(x=Validity, y=RT_ifo))+
   geom_jitter(aes(color=Validity, fill = Validity), alpha = 0.5)+
   geom_violin(aes(fill=Validity), alpha = 0.8)+
+  facet_grid(.~Saliency)+
   ggtitle("RT distribution after the Farouts have been removed")
 
 #plot for outliers
@@ -296,8 +297,10 @@ Creating a dataframe with the Mean RT across the factors of saliency and validit
 ```{r aggregate}
 #farouts
 Exp1agg_fo <- aggregate(data = Exp1data_OL, RT_ifo~participant+Saliency+Validity+ResponseType+Distance, mean)
-Exp1agg_fo <- Exp1agg_fo %>%
-  filter(Distance == 1)
+
+#TO CHECK FOR BINDING
+#Exp1agg_fo <- Exp1agg_fo %>%
+  #filter(Distance == 1)
 
 ggplot(Exp1agg_fo, aes(x=ResponseType, y=RT_ifo))+
   geom_violin(aes(fill = Validity), alpha = 0.2)+
@@ -307,13 +310,13 @@ ggplot(Exp1agg_fo, aes(x=ResponseType, y=RT_ifo))+
   theme_classic()+
   ggtitle("Distribution of RT(farouts) based on Response Type for immediate occurrences")
 
-bindingAnova <- ezANOVA(Exp1agg_fo,
-                        dv = RT_ifo,
-                        wid = participant,
-                        within = .(Validity, ResponseType),
-                        detailed = TRUE)
-bindmodel <- lmer(RT_ifo~1+ResponseType+(1|Saliency)+(1|Validity)+(1|participant), data = Exp1agg_fo)
-summary(bindmodel)
+# #bindingAnova <- ezANOVA(Exp1agg_fo,
+#                         dv = RT_ifo,
+#                         wid = participant,
+#                         within = .(Validity, ResponseType),
+#                         detailed = TRUE)
+# bindmodel <- lmer(RT_ifo~1+ResponseType+(1|Saliency)+(1|Validity)+(1|participant), data = Exp1agg_fo)
+# summary(bindmodel)
 
 pander(table(Exp1agg_fo$Distance, Exp1agg_fo$ResponseType),style = 'rmarkdown', caption = "Distance x ResponseType")
 
@@ -324,20 +327,20 @@ Exp1agg_fo$Validity <- as.factor(Exp1agg_fo$Validity)
 Exp1agg_fo$ResponseType <- as.factor(Exp1agg_fo$ResponseType)
 Exp1agg_fo$Distance <- as.factor(Exp1agg_fo$Distance)
 
-#aggregate means of farouts ERROR RELATED TO DESIGN NOT BEING BALANCED
+#aggregate means of farouts 
 aggmean_fo <- aggregate(data=Exp1agg_fo, RT_ifo~participant+Saliency+Validity+ResponseType, mean)
-#agg <- aggregate(data=Exp1agg_fo,RT_ifo~Saliency+Validity+ResponseType,mean)
-  aggmean_fo <- ezStats(data = Exp1agg_fo,
-                       dv = RT_ifo,
-                       wid = participant,
-                       within = .(Saliency, Validity,ResponseType))
+#is this different from ezStats? ERROR RELATED TO DESIGN NOT BALANCED
+# aggmean_fo <- ezStats(data = Exp1agg_fo,
+#                        dv = RT_ifo,
+#                        wid = participant,
+#                        within = .(Saliency, Validity,ResponseType))
   
-  ezDesign(Exp1agg_fo,Validity,Saliency, col=RT_ifo, row = ResponseType)
+  #ezDesign(Exp1agg_fo,Validity,Saliency, col=RT_ifo, row = ResponseType)
 
-
+###outliers
 Exp1agg_o <- aggregate(data = Exp1data_OL, RT_io~participant+Saliency+Validity+ResponseType+Distance, mean)
-Exp1agg_o <- Exp1agg_o %>%
-  filter(Distance == 1)
+#Exp1agg_o <- Exp1agg_o %>%
+  #filter(Distance == 1)
 
 pander(table(Exp1agg_o$Distance, Exp1agg_o$ResponseType),style = 'rmarkdown', caption = "Distance x ResponseType")
 
@@ -356,14 +359,14 @@ ggplot(Exp1agg_o, aes(x=ResponseType, y=RT_io))+
   theme_classic()+
   ggtitle("Distribution of RT(outliers) based on Response Type for immediate occurrences")
 
-bindingAnova <- ezANOVA(Exp1agg_o,
-                        dv = RT_io,
-                        wid = participant,
-                        within = .(Validity, ResponseType),
-                        detailed = TRUE)
-bindmodel <- lmer(RT_io~1+(ResponseType+Saliency+Validity)+(1|participant), data = Exp1agg_o)
-summary(bindmodel)
-anova(bindmodel)
+# #bindingAnova <- ezANOVA(Exp1agg_o,
+#                         dv = RT_io,
+#                         wid = participant,
+#                         within = .(Validity, ResponseType),
+#                         detailed = TRUE)
+# bindmodel <- lmer(RT_io~1+(ResponseType+Saliency+Validity)+(1|participant), data = Exp1agg_o)
+# summary(bindmodel)
+# anova(bindmodel)
 
 
 ##THROWS ERROR HAVE TO CHECK
@@ -420,21 +423,27 @@ standard_anova_fo <- ezANOVA(Exp1agg_Standard_fo,
 anova_out(standard_anova_fo)
 panderOptions('table.split.table',300)
 pander(standard_anova_fo, style = 'rmarkdown', caption = "Standard ANOVA table: RT(farouts) as a function of Saliency and Validity", split.table = Inf)
+
+#using lmer
+stdanova <- lmer(RT_ifo~Validity+(1|Saliency)+(1|participant), data = Exp1agg_Standard_fo, REML=FALSE)
+summary(stdanova)
+
 #checking results with BAYES Factor
 Bayesian <- anovaBF(RT_ifo~Saliency*Validity, data = Exp1agg_Standard_fo)
 Bayesian
 plot(Bayesian)
 
 ##Checking for Binding effects
-bindingAnova <- ezANOVA(Exp1agg_fo,
-                        dv = RT_ifo,
-                        wid = participant,
-                        within = .(Validity, ResponseType),
-                        detailed = TRUE)
-bindmodel <- lmer(RT_ifo~1+ResponseType+(1|Saliency)+(1|Validity)+(1|participant), data = Exp1agg_fo)
-summary(bindmodel)
-#BayesBinding <- anovaBF(RT_ifo~Saliency*Validity*ResponseType, data = Exp1agg_fo)
-#BayesBinding
+# bindingAnova <- ezANOVA(Exp1agg_fo,
+#                         dv = RT_ifo,
+#                         wid = participant,
+#                         within = .(Validity, ResponseType),
+#                         detailed = TRUE)
+# bindmodel <- lmer(RT_ifo~1+ResponseType+(1|Saliency)+(1|Validity)+(1|participant), data = Exp1agg_fo)
+# summary(bindmodel)
+# #BayesBinding <- anovaBF(RT_ifo~Saliency*Validity*ResponseType, data = Exp1agg_fo)
+# #BayesBinding
+
 #outliers
 standard_anova_o <- ezANOVA(data = Exp1agg_Standard_o,
                     dv = RT_io,
@@ -452,7 +461,7 @@ ggplot(aggmeanSV_fo, aes(x=Validity, color=Saliency, y=Mean))+
   geom_point()+
   labs(x="Saliency", y = "ReactionTime")+
   theme_classic()+
-  ylim(400,450)+
+  ylim(550,600)+
   ggtitle("Standard Analysis: RT(farouts) as function of saliency and validity")+
   theme(plot.title = element_text(hjust = 0.5))+
   theme(legend.title = element_text(size=14), legend.text= element_text(size=12))+
@@ -465,7 +474,7 @@ ggplot(aggmeanSV_o, aes(x=Saliency, color=Validity, y=Mean))+
   geom_point()+
   labs(x="Saliency", y = "ReactionTime")+
   theme_classic()+
-  ylim(400,450)+
+  ylim(550,600)+
   ggtitle("Standard Analysis: RT(Outliers) as function of saliency and validity")+
   theme(plot.title = element_text(hjust = 0.5))+
   theme(legend.title = element_text(size=12), legend.text= element_text(size=10))+
