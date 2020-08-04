@@ -25,15 +25,14 @@ library(BayesFactor)
 rm(list=ls())
 
 #setting up working directory at home office
-setwd("C:/FSU Jena_PhD/Exp1/Analysis")
-
-#loading the combined datafile
-Exp1data_OL <- read.csv("C:/FSU Jena_PhD/Exp1/Data/Exp1-Prolific/Exp1data_online_fullset.csv")
+#setwd("C:/FSU Jena_PhD/Exp1/Analysis")
+#loading the combined datafile home office
+#Exp1data_OL <- read.csv("C:/FSU Jena_PhD/Exp1/Data/Exp1-Prolific/Exp1data_online_fullset.csv")
 
 #Office set up
-#setwd("D:/PhD/Exp1-Overshadowing/Analysis")
+setwd("D:/PhD/Exp1-Overshadowing/Analysis")
 #load from office
-#Exp1data_OL <- read.csv("D:/PhD/Exp1-Overshadowing/Data/Exp1data_online_fullset.csv")
+Exp1data_OL <- read.csv("D:/PhD/Exp1-Overshadowing/Data/Exp1data_online_fullset.csv")
 ```
 Removing the columns that are not important such as thisN and thisRepN and so on.Next is to split the RT column because each column may contain more than one value and we only need to record the first RT response. RTs should also be changed to numberic as they are represented as strings initially
 
@@ -66,9 +65,7 @@ Exp1data_OL$RT_Trials <- Exp1data_OL$Old_RT
 
 #adjusting RT
 Exp1data_OL$RT_Trials <- 400+Exp1data_OL$RT_Trials #adding the 400ms that was coded in psychopy after which RT is evaluated
-#removing the value of fixation
-Exp1data_OL$RT_Trials <- Exp1data_OL$RT_Trials - 200
-#Removing the preinterval display duration
+#Removing the preinterval display duration that also includes fixation duration
 Exp1data_OL$RT_Trials <- Exp1data_OL$RT_Trials - Exp1data_OL$PreTargetDisplayTime
 #making sure screenbg is entered in every cell
 Exp1data_OL <- Exp1data_OL%>%group_by(participant)%>%fill(Screen_bg,.direction = "down")
@@ -102,7 +99,7 @@ Exp1data_OL<- Exp1data_OL%>%drop_na(RT_Trials)
 
 Saving this cleaned and prepared data frame
 ```{r}
-#write.csv(Exp1data_OL, file = "Exp1data_Online_cleaned.csv")
+write.csv(Exp1data_OL, file = "D:/PhD/Exp1-Overshadowing/Data/Exp1data_Online_cleaned.csv")
 ```
 
 ### Descriptive Statistics
@@ -113,6 +110,17 @@ pander(summary(Exp1data_OL$RT_Trials), style = 'rmarkdown', caption = "Summary o
 pander(table(Exp1data_OL$ACC_Trials), style = 'rmarkdown', caption = "Number of correct and Incorrect trials")
 pander(round(table(Exp1data_OL$ACC_Trials)/nrow(Exp1data_OL)*100, digits = 3), style = 'rmarkdown', caption = "Percentage of errors")
 sum(is.na(Exp1data_OL$RT_Trials))
+
+```
+### Plotting the ResponseTime to explore the datatrends
+
+Checking how the RTs are based on accuracy 
+
+```{r}
+ggplot(Exp1data_OL, aes(x=Validity, y=RT_Trials))+
+  geom_jitter(aes(color=ACC_Trials), alpha = 0.5)+
+  # geom_violin(aes(fill=Validity, group = ACC_Trials), alpha = 0.8)+
+  ggtitle("RT vs ACC")
 ```
 
 #### Removing Outliers and Farouts
