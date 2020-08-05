@@ -1,7 +1,7 @@
 ---
 title: "Exp1_Online_Analysis"
 author: "Mrudula"
-date: "21/07/2020"
+date: "05/08/2020"
 output: html_document
 ---
 
@@ -36,7 +36,7 @@ Exp1data_OL <- read.csv("D:/PhD/Exp1-Overshadowing/Data/Exp1data_online_fullset.
 ```
 Removing the columns that are not important such as thisN and thisRepN and so on.Next is to split the RT column because each column may contain more than one value and we only need to record the first RT response. RTs should also be changed to numberic as they are represented as strings initially
 
-```{r cleandata, message = FALSE}
+```{r cleandata, message = FALSE, warning=FALSE}
 #removing unnecessary columns
 
 Exp1data_OL <- Exp1data_OL %>%
@@ -78,7 +78,7 @@ Since the data is now cleaned to an extent, next steps involves preparing the df
 *New column with error rate
 *Removing the practice trials - Keep ExpFirst learn and learn trials for previous occurence analysis
 *Remove AttentionCheck 
-```{r dataprep}
+```{r dataprep, warning=FALSE}
 Exp1data_OL$ACC_Trials <- Exp1data_OL$ResponseKey.corr
 
 #new columns for error rate
@@ -99,7 +99,7 @@ Exp1data_OL<- Exp1data_OL%>%drop_na(RT_Trials)
 
 Saving this cleaned and prepared data frame
 ```{r}
-write.csv(Exp1data_OL, file = "D:/PhD/Exp1-Overshadowing/Data/Exp1data_Online_cleaned.csv")
+#write.csv(Exp1data_OL, file = "D:/PhD/Exp1-Overshadowing/Data/Exp1data_Online_cleaned.csv")
 ```
 
 ### Descriptive Statistics
@@ -114,18 +114,27 @@ sum(is.na(Exp1data_OL$RT_Trials))
 ```
 ### Plotting the ResponseTime to explore the datatrends
 
-Checking how the RTs are based on accuracy 
 
-```{r}
+```{r plotRTvsACC,warning=FALSE}
 ggplot(Exp1data_OL, aes(x=ACC_Trials, y=RT_Trials))+
   geom_jitter(aes(color=Validity), alpha = 0.5)+
   # geom_violin(aes(fill=Validity, group = ACC_Trials), alpha = 0.8)+
   ggtitle("RT vs ACC")
+
+ggplot(Exp1data_OL, aes(x=ErrorRate, y=RT_Trials))+
+  geom_jitter(aes(color = Validity), alpha = 0.5)+
+  ggtitle("Rt vs ErrorRate")
+```
+
+To check for speed accuracy tradeoff
+```{r SpeedAcctradeoff}
+sat <- lm(RT_Trials~ErrorRate+participant, data = Exp1data_OL)
+summary(sat)
 ```
 
 #### Removing Outliers and Farouts
 Columns will be created based on the farouts and outliers of the Reaction Time(Only individual based outliers/farouts)
-```{r FaroutsOutliers }
+```{r FaroutsOutliers, warning=FALSE }
 #removing RT values for the incorrect trials
 Exp1data_OL$RT_Trials[Exp1data_OL$ACC_Trials==0] <- NA
 #mean RT for correct trials
@@ -151,7 +160,28 @@ computeTukeys <- function(x){
 #identifying the outliers and farouts at individual level
 Exp1data_OL <- ddply(Exp1data_OL, .(participant), computeTukeys)
 
+```
 
+Plotting the outliers and farouts in the overall RT distribution 
+
+```{r Plotting the outliers&farouts in the graph, warning = FALSE, echo=FALSE, out.width="50%"}
+ggplot(Exp1data_OL, aes(x=Validity, y=RT_Trials))+
+  geom_jitter(aes(color=Validity, fill = Validity), alpha = 0.5)+
+  geom_hline(aes(yintercept = Outlier), linetype = "dotted")+
+  geom_violin(aes(fill=Validity), alpha = 0.8)+
+  ggtitle("RT distribution with outliers marked")
+
+ggplot(Exp1data_OL, aes(x=Validity, y=RT_Trials))+
+  geom_jitter(aes(color=Validity, fill = Validity), alpha = 0.5)+
+  geom_hline(aes(yintercept = Farouts), linetype = "dotted")+
+  geom_violin(aes(fill=Validity), alpha = 0.8)+
+  ggtitle("RT distribution with Farouts marked")
+
+```
+
+Adding columns of RT based on the outliers/farouts being removed
+
+```{r explore outliersandfarouts, warning=FALSE }
 #creating new column with RT trials after removing outliers/farouts
 Exp1data_OL$RT_ifo <- Exp1data_OL$RT_Trials
 Exp1data_OL$RT_io <- Exp1data_OL$RT_Trials
@@ -212,7 +242,7 @@ sum(is.na(Exp1data_OL$Distance))
 ```
 This is continued further by adding values for previous occurence that were not the immediately preceding  (eg. n-2, n-3, n-4....)
 
-```{r morelags}
+```{r morelags, warning=FALSE}
 lagvalue <- 2:30
 
 #For learn trials and test trials together
@@ -234,7 +264,7 @@ First, creating another column that contains the values "RR" or "RC" based on wh
 *Using lag function to look back at trials to check whether the response was same or different the last time that occurence happened.
 +If for example the previous time Tisch|Kreis occured was a valid test trial 3 rows back where the response expected was "l" then the responsetype column would have the value "RR"
 
-```{r Prevresp}
+```{r Prevresp, warning=FALSE}
 Exp1data_OL$ResponseType <- NA
 #moving this column to the last for easy reference
 Exp1data_OL <- Exp1data_OL%>%select(-CorrectAnswer,CorrectAnswer)
@@ -255,7 +285,46 @@ pander(table(Exp1data_OL$Distance, Exp1data_OL$ResponseType), style = 'rmarkdown
 
 #crosstable to check factorial combination of Distance x Response Type x COndition:
 pander(table(Exp1data_OL$Distance, Exp1data_OL$ResponseType, Exp1data_OL$Condition), caption = "Factorial combination of Distance x ResponseType x Condition")
+```
 
+Checking how the RTs differ between RRs and RCs
+
+```{r Plot based on ResponseType, warning=FALSE}
+##FAROUTS
+ggplot(Exp1data_OL, aes(x=ResponseType, y=RT_ifo))+
+  geom_violin(aes(fill = Validity), alpha = 0.2)+
+  geom_point(aes(colour=Validity, group = Validity),position = position_jitterdodge())+
+  ylab("Reaction Time")+
+  facet_grid(.~Saliency)+
+  theme_classic()+
+  ggtitle("Distribution of RT(farouts) based on Response Type for all trials")
+
+Exp1data_OL %>% filter(Distance == 1) %>% 
+  ggplot(aes(ResponseType,RT_ifo))+
+  geom_violin(aes(fill = Validity), alpha = 0.2)+
+  geom_point(aes(colour=Validity, group = Validity),position = position_jitterdodge())+
+  ylab("Reaction Time")+
+  facet_grid(.~Saliency)+
+  theme_classic()+
+  ggtitle("Distribution of RT(farouts) based on Response Type only for immediate occurrences")
+
+##OUtliers
+ggplot(Exp1data_OL, aes(x=ResponseType, y=RT_io))+
+  geom_violin(aes(fill = Validity), alpha = 0.2)+
+  geom_point(aes(colour=Validity, group = Validity),position = position_jitterdodge())+
+  ylab("Reaction Time")+
+  facet_grid(.~Saliency)+
+  theme_classic()+
+  ggtitle("Distribution of RT(outliers) based on Response Type for all trials")
+
+Exp1data_OL %>% filter(Distance == 1) %>% 
+  ggplot(aes(ResponseType,RT_io))+
+  geom_violin(aes(fill = Validity), alpha = 0.2)+
+  geom_point(aes(colour=Validity, group = Validity),position = position_jitterdodge())+
+  ylab("Reaction Time")+
+  facet_grid(.~Saliency)+
+  theme_classic()+
+  ggtitle("Distribution of RT(outliers) based on Response Type only for immediate occurrences")
 
 ```
 
@@ -266,8 +335,9 @@ Now for further analysis, the learn trials will be removed and only the test tri
 Exp1data_OL <- Exp1data_OL[!grepl("learn", Exp1data_OL$Condition),]
 table(Exp1data_OL$Condition)
 ```
-### Exploratory
+
 ```{r}
+### Exploratory
 # Exp1data_explore <- Exp1data_OL[!grepl("1", Exp1data_OL$Distance),]
 # Exploreagg <- aggregate(data = Exp1data_explore, RT_ifo~participant+Saliency+Validity, mean)
 # #convert to factors for ANOVA
@@ -294,7 +364,7 @@ table(Exp1data_OL$Condition)
 
 #### 1. Aggregate the means with the factors ResponseType, Distance, Saliency, Validity 
 Creating a dataframe with the Mean RT across the factors of saliency and validity along with ResponseType and Distance. Separately for farouts and outliers so that it can be distinguised while performaning analysis
-```{r aggregate}
+```{r aggregate, warning=FALSE}
 #farouts
 Exp1agg_fo <- aggregate(data = Exp1data_OL, RT_ifo~participant+Saliency+Validity+ResponseType+Distance, mean)
 
@@ -302,13 +372,14 @@ Exp1agg_fo <- aggregate(data = Exp1data_OL, RT_ifo~participant+Saliency+Validity
 #Exp1agg_fo <- Exp1agg_fo %>%
   #filter(Distance == 1)
 
-ggplot(Exp1agg_fo, aes(x=ResponseType, y=RT_ifo))+
+Exp1agg_fo %>% filter(Distance == 1) %>% 
+  ggplot(aes(x=ResponseType, y=RT_ifo))+
   geom_violin(aes(fill = Validity), alpha = 0.2)+
   geom_point(aes(colour=Validity, group = Validity),position = position_jitterdodge())+
   ylab("Reaction Time")+
   facet_grid(.~Saliency)+
   theme_classic()+
-  ggtitle("Distribution of RT(farouts) based on Response Type for immediate occurrences")
+  ggtitle("Distribution of meanRT(farouts) based on Response Type for immediate occurrences")
 
 # #bindingAnova <- ezANOVA(Exp1agg_fo,
 #                         dv = RT_ifo,
@@ -328,7 +399,7 @@ Exp1agg_fo$ResponseType <- as.factor(Exp1agg_fo$ResponseType)
 Exp1agg_fo$Distance <- as.factor(Exp1agg_fo$Distance)
 
 #aggregate means of farouts 
-aggmean_fo <- aggregate(data=Exp1agg_fo, RT_ifo~participant+Saliency+Validity+ResponseType, mean)
+#aggmean_fo <- aggregate(data=Exp1agg_fo, RT_ifo~participant+Saliency+Validity+ResponseType, mean)
 #is this different from ezStats? ERROR RELATED TO DESIGN NOT BALANCED
 # aggmean_fo <- ezStats(data = Exp1agg_fo,
 #                        dv = RT_ifo,
@@ -351,13 +422,14 @@ Exp1agg_o$Validity <- as.factor(Exp1agg_o$Validity)
 Exp1agg_o$ResponseType <- as.factor(Exp1agg_o$ResponseType)
 Exp1agg_o$Distance <- as.factor(Exp1agg_o$Distance)
 
-ggplot(Exp1agg_o, aes(x=ResponseType, y=RT_io))+
+Exp1agg_o %>% filter(Distance ==1) %>% 
+  ggplot(aes(x=ResponseType, y=RT_io))+
   geom_violin(aes(fill = Validity), alpha = 0.2)+
   geom_point(aes(colour=Validity, group = Validity),position = position_jitterdodge())+
   ylab("Reaction Time")+
   facet_grid(.~Saliency)+
   theme_classic()+
-  ggtitle("Distribution of RT(outliers) based on Response Type for immediate occurrences")
+  ggtitle("Distribution of meanRT(outliers) based on Response Type for immediate occurrences")
 
 # #bindingAnova <- ezANOVA(Exp1agg_o,
 #                         dv = RT_io,
@@ -414,7 +486,8 @@ aggmeanSV_o <- ezStats(data = Exp1agg_Standard_o,
 ## *ANOVA & PLOTS* 
 
 #### 1. Standard Analysis ANOVA with plot
-```{r Stdanalysis}
+```{r Stdanalysis, warning = FALSE}
+#using ezPackage
 standard_anova_fo <- ezANOVA(Exp1agg_Standard_fo,
                     dv = RT_ifo,
                     wid = participant,
@@ -424,14 +497,17 @@ anova_out(standard_anova_fo)
 panderOptions('table.split.table',300)
 pander(standard_anova_fo, style = 'rmarkdown', caption = "Standard ANOVA table: RT(farouts) as a function of Saliency and Validity", split.table = Inf)
 
-#using lmer
-stdanova <- lmer(RT_ifo~Validity+(1|Saliency)+(1|participant), data = Exp1agg_Standard_fo, REML=FALSE)
-summary(stdanova)
+#using lmer on the standard dataset and using subjects as random effect --> Not sure if within subject pattern is embedded. Otherwise this model has no random effect
+stdmodel <- lmer(RT_ifo~Validity*Saliency + (1|participant), data = Exp1agg_Standard_fo, REML=F)
+summary(stdmodel)
 
+#using lmer for mixed effect/multilevel model with random effects as Distance and ResponseType
+modelrmdsv <- lmer(RT_ifo~Validity*Saliency+(1|participant)+(1|Distance)+(1|ResponseType), data = Exp1agg_fo, REML = F)
+summary(modelrmdsv)
 #checking results with BAYES Factor
-Bayesian <- anovaBF(RT_ifo~Saliency*Validity, data = Exp1agg_Standard_fo)
-Bayesian
-plot(Bayesian)
+# Bayesian <- anovaBF(RT_ifo~Saliency*Validity, data = Exp1agg_Standard_fo)
+# Bayesian
+# plot(Bayesian)
 
 ##Checking for Binding effects
 # bindingAnova <- ezANOVA(Exp1agg_fo,
@@ -452,7 +528,8 @@ standard_anova_o <- ezANOVA(data = Exp1agg_Standard_o,
                     detailed = TRUE)
 anova_out(standard_anova_o)
 ```
-Plots of the data for both outliers and farouts
+
+Plots of the data for both outliers and farouts of the ** Standard Analysis data set ** including only the Saliency and Validity as factors
 ```{r PlotsafterANOVA}
 #Plot for farouts
 
