@@ -299,6 +299,7 @@ ggplot(Exp1data_OL, aes(x=ResponseType, y=RT_ifo))+
   theme_classic()+
   ggtitle("Distribution of RT(farouts) based on Response Type for all trials")
 
+##Choosing only the trials where the Distance is 1
 Exp1data_OL %>% filter(Distance == 1) %>% 
   ggplot(aes(ResponseType,RT_ifo))+
   geom_violin(aes(fill = Validity), alpha = 0.2)+
@@ -317,6 +318,7 @@ ggplot(Exp1data_OL, aes(x=ResponseType, y=RT_io))+
   theme_classic()+
   ggtitle("Distribution of RT(outliers) based on Response Type for all trials")
 
+#Choosing the trials where the distance is 1
 Exp1data_OL %>% filter(Distance == 1) %>% 
   ggplot(aes(ResponseType,RT_io))+
   geom_violin(aes(fill = Validity), alpha = 0.2)+
@@ -368,9 +370,7 @@ Creating a dataframe with the Mean RT across the factors of saliency and validit
 #farouts
 Exp1agg_fo <- aggregate(data = Exp1data_OL, RT_ifo~participant+Saliency+Validity+ResponseType+Distance, mean)
 
-#TO CHECK FOR BINDING
-#Exp1agg_fo <- Exp1agg_fo %>%
-  #filter(Distance == 1)
+
 
 Exp1agg_fo %>% filter(Distance == 1) %>% 
   ggplot(aes(x=ResponseType, y=RT_ifo))+
@@ -483,6 +483,18 @@ aggmeanSV_o <- ezStats(data = Exp1agg_Standard_o,
                      within = .(Saliency, Validity))
 
 ```
+### 3. Aggregate with error rates
+```{r}
+Exp1agg_ER <- aggregate(data = Exp1data_OL, ErrorRate~participant+Saliency+Validity, mean)
+
+#Converting to factors for ANOVA
+Exp1agg_ER$participant <- as.factor(Exp1agg_ER$participant)
+Exp1agg_ER$Saliency <- as.factor(Exp1agg_ER$Saliency)
+Exp1agg_ER$Validity <- as.factor(Exp1agg_ER$Validity)
+
+```
+
+
 ## *ANOVA & PLOTS* 
 
 #### 1. Standard Analysis ANOVA with plot
@@ -556,5 +568,30 @@ ggplot(aggmeanSV_o, aes(x=Saliency, color=Validity, y=Mean))+
   theme(plot.title = element_text(hjust = 0.5))+
   theme(legend.title = element_text(size=12), legend.text= element_text(size=10))+
   theme(axis.title = element_text(size=12),axis.text = element_text(size=10))
+```
+
+#### 2. ANOVA including Distance and Response Type as factors
+
+```{r}
+##Throws error because of imbalanced design
+# anova_fo <- ezANOVA(Exp1agg_fo,
+#                     dv = RT_ifo,
+#                     wid = participant,
+#                     within = .(Saliency,Validity,ResponseType),
+#                     detailed = TRUE)
+# anova_out(anova_fo)
+# panderOptions('table.split.table',300)
+# pander(standard_anova_fo, style = 'rmarkdown', caption = "Standard ANOVA table: RT(farouts) as a function of Saliency and Validity", split.table = Inf)
+```
+
+### 3. ANOVA with error rates
+
+```{r}
+anova_ER <- ezANOVA(Exp1agg_ER,
+                    dv = ErrorRate,
+                    wid = participant,
+                    within = .(Saliency,Validity),
+                    detailed = TRUE)
+anova_out(anova_ER)
 ```
 
