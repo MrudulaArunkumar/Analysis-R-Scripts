@@ -116,7 +116,7 @@ Exp1data_OL<- Exp1data_OL%>%drop_na(RT_Trials)
 
 Saving this cleaned and prepared data frame
 ```{r}
-write.csv(Exp1data_OL, file = "Exp1data_Online_cleaned.csv")
+#write.csv(Exp1data_OL, file = "Exp1data_Online_cleaned.csv")
 ```
 
 <!-- ### Descriptive Statistics -->
@@ -352,6 +352,11 @@ pander(table(Exp1data_OL$Distance, Exp1data_OL$ResponseType, Exp1data_OL$Conditi
 ```
 
 ## **STATISTICAL ANALYSIS** 
+
+
+### Trying the Multi level model
+1. change to long format
+2. Start with model 1 by having just one intercept
 
 Now for further analysis, the learn trials will be removed and only the test trials will be analysed
 ```{r}
