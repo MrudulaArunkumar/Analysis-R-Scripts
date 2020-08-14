@@ -290,7 +290,7 @@ First, creating another column that contains the values "RR" or "RC" based on wh
 ```{r Prevresp, warning=FALSE}
 Exp1data_OL$ResponseType <- NA
 #moving this column to the last for easy reference
-Exp1data_OL <- Exp1data_OL%>%select(-CorrectAnswer,CorrectAnswer)
+Exp1data_OL <- Exp1data_OL%>%select(CorrectAnswer,everything())
 
 #coding repeating the same response and if the conditions are not true the RC is evaluated under the else clause within the main ifelse statement. This was done to avoid revaluating and missing out values that are originally RC but was treated as RR as that was evaluated first.
 Rmlag <- 1:30
@@ -351,18 +351,41 @@ pander(table(Exp1data_OL$Distance, Exp1data_OL$ResponseType, Exp1data_OL$Conditi
 
 ```
 
+Adding a column that checks what condition the last occurence was 
+
+```{r}
+#creating new column
+Exp1data_OL$LastOcc_Condition <- NA
+#what condition
+sum(is.na(Exp1data_OL$Distance))
+#Exp1data_OL$Distance[is.na(Exp1data_OL$Distance)] <- 0
+# #for(m in (Exp1data_OL$Distance)){
+#  # Exp1data_OL <- Exp1data_OL%>%
+#     mutate(LastOcc_Condition = lag(Condition,m))
+# }
+Exp1data_OL <- Exp1data_OL %>%
+  mutate(LastOcc_Condition = ifelse(lag(Condition,1)=="test" & 
+              (lag(Distractor1,1)==Distractor1|lag(Distractor1,1)==Distractor2) &
+                            lag(participant,1)==participant &
+                            lag(ACC_Trials,1)== 1, "test", LastOcc_Condition))
+
+Exp1data_OL <- Exp1data_OL %>%
+  mutate(LastOcc_Condition = ifelse(lag(Condition,1)=="learn" & 
+              (lag(Distractor1,1)==Distractor1|lag(Distractor1,1)==Distractor2) &
+                            lag(participant,1)==participant &
+                            lag(ACC_Trials,1)== 1, "learn", LastOcc_Condition))
+
+Exp1data_OL <- Exp1data_OL %>% 
+  select(LastOcc_Condition,everything())
+  
+```
+
 ## **STATISTICAL ANALYSIS** 
 
-
-### Trying the Multi level model
-1. change to long format
-2. Start with model 1 by having just one intercept
-
-Now for further analysis, the learn trials will be removed and only the test trials will be analysed
 ```{r}
 #easy reference
 Exp1data_OL <- Exp1data_OL%>%select(Saliency, Validity, everything())
-
+Exp1data_OL <- Exp1data_OL%>%select(Distance, ResponseType, everything())
 #check design
 #table(Exp1data_OL$Condition, Exp1data_OL$Saliency)
 
@@ -688,4 +711,11 @@ ggplot(aggDistRespSV, aes(ResponseType,RTmean,color = Validity)) +
   facet_grid(.~Saliency)+
   theme_classic()
 ```
+## MULTI LEVEL MODELLING
 
+
+### Trying the Multi level model
+1. change to long format
+2. Start with model 1 by having just one intercept
+
+Now for further analysis, the learn trials will be removed and only the test trials will be analysed
