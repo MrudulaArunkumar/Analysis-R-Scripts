@@ -9,6 +9,8 @@ output: html_document
 
 The datafiles from 60 participants have been combined together to one file. NOw the datafile needs to be arranged and prepped to set it up for analysis
 ```{r libraryload, message=FALSE, warning = FALSE}
+#Recording the session of R in place at the time
+sessionInfo()
 #loading the necessary libraries
 library(tidyverse)
 library(plyr)
@@ -18,11 +20,16 @@ library(lme4)#for multilevel modelling
 library(nlme)
 library(data.table)
 library(knitr)#for markdown
-library(pander)#for markdown tables
+library(pander)#for markdown tables or
+library(xtable)
+library(texreg)
 library(BayesFactor)
+library(here)
+library(rmarkdown)
 
 #clearing up workspace 
 rm(list=ls())
+
 
 #setting up working directory at home office
 #setwd("C:/FSU Jena_PhD/Exp1/Analysis")
@@ -31,11 +38,20 @@ rm(list=ls())
 
 #Office set up Mrudula
 setwd("D:/PhD/Exp1-Overshadowing/Analysis/R Scripts")
+
+set_here()
 #Office setup Carina
 #setwd("~/Daten/1 BRAC-FOR/overshadowing/Exp 1 Psychopy Mrudula/Analyses")
 
 #load from office
 Exp1data_OL <- read.csv("D:/PhD/Exp1-Overshadowing/Data/Exp1data_online_fullset.csv")
+
+#adding the dataframe to the search path to not repeat it everytime to select or name a column
+attach(Exp1data_OL)
+#remember to deattach() when you are done with it
+class(Age)
+
+pander(summary(Exp1data_OL$Age), style = 'rmarkdown', caption = "Mean Age of the sample")
 ```
 Removing the columns that are not important such as thisN and thisRepN and so on.Next is to split the RT column because each column may contain more than one value and we only need to record the first RT response. RTs should also be changed to numberic as they are represented as strings initially
 
@@ -90,7 +106,8 @@ table(Exp1data_OL$Age)
 ggplot(Exp1data_OL, aes(x = Age))+
   geom_histogram()
 
-summary(Exp1data_OL$Age)
+
+
 ```
 
 ##### Data Preparation
@@ -125,6 +142,7 @@ Exp1data_OL<- Exp1data_OL%>%drop_na(RT_Trials)
 ggplot(Exp1data_OL, aes(x=Age, y = RT_Trials))+
   geom_point(colour=Exp1data_OL$Age)
 
+(table(Age))/510
 
 ```
 
@@ -420,9 +438,19 @@ Exp1data_OL <- Exp1data_OL%>%select(Saliency, Validity, everything())
 
 Exp1data_OL <- Exp1data_OL[!grepl("learn", Exp1data_OL$Condition),]
 table(Exp1data_OL$Condition)
-table(Exp1data_OL$Screen_bg)
+(table(Exp1data_OL$Screen_bg))/240
 table(Exp1data_OL$LastOcc_Condition)
 table(Exp1data_OL$WordPair)
+
+
+class(Age)
+Exp1data_OL$Age <- as.numeric(Exp1data_OL$Age)
+Exp1data_OL <- Exp1data_OL %>%
+  filter(Age == 35)
+
+table(Age)
+
+
 ```
 
 
