@@ -86,6 +86,11 @@ Exp1data_OL$RT_Trials <- Exp1data_OL$RT_Trials - Exp1data_OL$PreTargetDisplayTim
 #making sure screenbg is entered in every cell
 Exp1data_OL <- Exp1data_OL%>%group_by(participant)%>%fill(Screen_bg,.direction = "down")
 
+table(Exp1data_OL$Age)
+ggplot(Exp1data_OL, aes(x = Age))+
+  geom_histogram()
+
+summary(Exp1data_OL$Age)
 ```
 
 ##### Data Preparation
@@ -116,6 +121,11 @@ Exp1data_OL <-Exp1data_OL %>%
 
 #removing the rows that contain NA like the block end/pause screens of the exp
 Exp1data_OL<- Exp1data_OL%>%drop_na(RT_Trials)
+
+ggplot(Exp1data_OL, aes(x=Age, y = RT_Trials))+
+  geom_point(colour=Exp1data_OL$Age)
+
+
 ```
 
 Saving this cleaned and prepared data frame
@@ -214,6 +224,18 @@ Exp1data_OL$RT_io[Exp1data_OL$RT_io > Exp1data_OL$Outlier|Exp1data_OL$RT_io < 30
 
 pander(summary(Exp1data_OL$RT_ifo), style = 'rmarkdown', caption = "Summary of RT after removing Farouts")
 pander(summary(Exp1data_OL$RT_io), style = 'rmarkdown', caption = "Summary of RT after removing Outliers")
+
+
+summary(Exp1data_OL$Age)
+Exp1data_OL$Age <- as.factor(Exp1data_OL$Age)
+summary(aov(RT_ifo~Age, data = Exp1data_OL))
+summary(aov(RT_io~Age, data = Exp1data_OL))
+
+
+ggplot(Exp1data_OL, aes(x=Age, y = RT_ifo))+
+  geom_point(colour=Exp1data_OL$Age)
+
+
 
 #Plotting to check farouts
 # ggplot(Exp1data_OL, aes(x=Validity, y=RT_ifo))+
@@ -392,7 +414,7 @@ Now for further analysis, the learn trials will be removed and only the test tri
 ```{r}
 #easy reference
 Exp1data_OL <- Exp1data_OL%>%select(Saliency, Validity, everything())
-Exp1data_OL <- Exp1data_OL%>%select(Distance, ResponseType, everything())
+#Exp1data_OL <- Exp1data_OL%>%select(Distance, ResponseType, everything())
 #check design
 #table(Exp1data_OL$Condition, Exp1data_OL$Saliency)
 
@@ -512,6 +534,9 @@ sum(is.na(Exp1agg_o$RT_io))
 Aggregating the measn without the factors or Response Type and Distance to perform basic Standard analysis and check for contingency
 ```{r}
 #farouts
+Exp1data_OL$Age <- as.numeric(Exp1data_OL$Age)
+Exp1data_OL <- Exp1data_OL%>%
+  filter(Age <= 35)
 Exp1agg_Standard_fo <- aggregate(data = Exp1data_OL, RT_ifo~participant+Saliency+Validity, mean)
 #convert to factors for ANOVA
 Exp1agg_Standard_fo$participant <- as.factor(Exp1agg_Standard_fo$participant)
@@ -579,6 +604,7 @@ standard_anova_fo <- ezANOVA(Exp1agg_Standard_fo,
                     detailed = TRUE)
 anova_out(standard_anova_fo)
 
+summary(aov(RT_ifo~Validity+Saliency+Validity*Saliency, data = Exp1agg_Standard_fo))
 #plot
 ezPlot(Exp1agg_Standard_fo,
                     dv = RT_ifo,

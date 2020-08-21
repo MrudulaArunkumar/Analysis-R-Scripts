@@ -18,7 +18,7 @@ library(knitr)
 library(pander)
 
 #removing workspace objects
-rm(list = ls())
+#rm(list = ls())
 #officesetup
 setwd("D:/PhD/Exp1-Overshadowing/Analysis")
 #home office setup
@@ -44,6 +44,9 @@ Exp1data <- read.csv("D:/PhD/Exp1-Overshadowing/Data/Exp1data.csv")
 Exp1data <- subset(Exp1data, select = -c(X))
 #renaming first column to subject
 names(Exp1data)[1] <- "Subject"
+
+table(Exp1data$Age)
+summary(Exp1data$Age)
 ```
 
 Preparing the data frame  
@@ -58,6 +61,8 @@ Exp1data$Errorrate <- 1 - Exp1data$ACC_Trial
 
 #removing practice trials
 Exp1data <- Exp1data[!grepl("Practice", Exp1data$Condition),]
+summary(Exp1data$Age)
+
 ```
 Below you can find the summary of the Reaction Time data and  error percentage
 ```{r tables, echo = FALSE}
@@ -95,6 +100,11 @@ Exp1data$RT_Trial_io[Exp1data$RT_Trial_io > Exp1data$Outlier|Exp1data$RT_Trial_i
 
 pander(summary(Exp1data$RT_Trial_ifo), style = 'rmarkdown', caption = "Summary of RT after removing Farouts")
 pander(summary(Exp1data$RT_Trial_io), style = 'rmarkdown', caption = "Summary of RT after removing Outliers")
+
+ggplot(Exp1data, aes(x=Age, y = RT_Trial_ifo))+
+  geom_point(colour = Exp1data$Age)
+Exp1data$Age <- as.factor(Exp1data$Age)
+summary(aov(RT_Trial_ifo~Age, data = Exp1data))
 ```
 
 ### Previous occurence analysis
