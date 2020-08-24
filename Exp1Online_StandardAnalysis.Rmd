@@ -1,0 +1,612 @@
+---
+title: "Exp1 Online- StandardAnalysis"
+author: "Mrudula & Carina"
+date: "24/08/2020"
+output: html_document
+---
+
+### Fundamentals 
+
+The datafiles from 60 participants were collected from pavlovia via prolific. All the data files have been combined together to one datafile. This datafile is loaded along with the necessary libraries needed for the data preparation/cleaning and analysis.
+```{r libraryload, include=FALSE, message=FALSE, warning = FALSE}
+#Recording the session of R in place at the time
+sessionInfo()
+#loading the necessary libraries
+library(tidyverse) #for data prep
+library(plyr)#also for data prep
+library(ez) #anova stats
+library(schoRsch) 
+library(knitr)#for markdown
+library(pander)#for markdown tables 
+library(here) #useful to set up working directory
+library(rmarkdown) #for markdown
+
+#clearing up workspace 
+rm(list=ls())
+
+#setting up working directory at home office
+#setwd("C:/FSU Jena_PhD/Exp1/Analysis")
+#loading the combined datafile home office
+#Exp1data_OL <- read.csv("C:/FSU Jena_PhD/Exp1/Data/Exp1-Prolific/Exp1data_online_fullset.csv")
+
+#Office set up Mrudula
+setwd("D:/PhD/Exp1-Overshadowing/Analysis/R Scripts")
+set_here()
+
+#Office setup Carina
+#setwd("~/Daten/1 BRAC-FOR/overshadowing/Exp 1 Psychopy Mrudula/Analyses")
+
+#load from office
+Exp1data_OL <- read.csv("D:/PhD/Exp1-Overshadowing/Data/Exp1data_online_fullset.csv")
+
+#adding the dataframe to the search path to not repeat it everytime to select or name a column
+attach(Exp1data_OL)
+#remember to deattach() when you are done with it
+
+
+```
+### Cleaning the datafile
+
+To arrive at a clean datafile, certain columns are removed such as columns containing details with instructions, pauses attention Check, etc. 
+
+
+```{r cleandata, include = FALSE, message = FALSE, warning=FALSE}
+#removing unnecessary columns
+
+Exp1data_OL <- Exp1data_OL %>%
+  select(-Attention.thisRepN,-Attention.thisTrialN,-Attention.thisIndex,-Attention.ran,
+         -id, -session, -researcher, -InstRep.thisRepN,-InstRep.thisIndex,-InstRep.thisN, -InstRep.thisTrialN,
+         -PracRepeat.thisRepN,-PracRepeat.thisIndex,-PracRepeat.thisN, -PracRepeat.thisTrialN,
+         -prctrials.thisIndex,-prctrials.thisRepN,-prctrials.thisTrialN,-prctrials.ran,
+         -firstlearntrials.thisN,-firstlearntrials.thisRepN,-firstlearntrials.thisTrialN,-firstlearntrials.ran,-firstlearntrials.thisIndex,
+         -afterpause.keys,-blocks.ran,-InstRep.ran,-consentkey.keys,-consentkey.rt,-beginexp.keys,-beginexp.rt,-checkresp.corr,-checkresp.keys,-checkresp.rt,-Attention.thisN,-Question,-Solution,-gotoPrac.keys,-gotoPrac.rt,-PracRepeat.ran,-prctrials.thisN,-afterpause.rt,-blocks.thisN, -todebrief.rt, -todebrief.keys, -ExpExit.keys, -ExpExit.rt
+         )
+#removing the first column named x
+Exp1data_OL <- subset(Exp1data_OL, select = -c(X))
+
+#get RT variable to start of dataset
+Exp1data_OL <-Exp1data_OL %>%
+  select(ResponseKey.rt, PreTargetDisplayTime, Block, everything())
+```
+
+
+The column containing the RTs is split because some rows contain more than one RT because the psychopy is designed in such a way that only upon the correct answer the next trial is presented. So in trials that are incorrect there will be more than one RT value registered. However we are only interested in the first response, hence the RT column is split to contain the first response time in a separate column. RTs should also be changed to double as they are represented as strings initially (with the presence of commas and square brackets) 
+
+These RT values are further edited:
+* Psychopy originally evaluated the RTs from 400ms irrespective of the PreTrial Display time
+* Hence, to the RT value, 400ms is added and later subtracted by the PreTrialDisplay time(also includes fixation cross) (in ms) for each trial
+
+```{r RTprep, include=FALSE }
+#Splitting up the RT column to be able to evaluate the RTs
+Exp1data_OL <- separate(Exp1data_OL, col = ResponseKey.rt, into = c("RT_Trials", "RT_secondary"), sep = ",")
+
+#removing the square bracket and changing from string to numeric
+Exp1data_OL$RT_Trials <- Exp1data_OL$RT_Trials %>% 
+  str_replace_all("\\[|\\]", "")%>%
+  as.double(Exp1data_OL$RT_Trials)
+
+#converting RT and PreTarget DIsplay time values in ms 
+Exp1data_OL$RT_Trials <- 1000*(Exp1data_OL$RT_Trials)
+Exp1data_OL$PreTargetDisplayTime <- 1000 * Exp1data_OL$PreTargetDisplayTime
+
+
+#renaming it to OldRT to have a copy and later transform the RT values based on the time calculated in psychopy
+names(Exp1data_OL)[names(Exp1data_OL)=="RT_Trials"] <- "Old_RT"
+
+Exp1data_OL$RT_Trials <- Exp1data_OL$Old_RT
+
+#to check frequency of each value in the column
+table(Exp1data_OL$PreTargetDisplayTime)
+
+#adjusting RT
+Exp1data_OL$RT_Trials <- 400+Exp1data_OL$RT_Trials #adding the 400ms that was coded in psychopy after which RT is evaluated
+#Removing the preinterval display duration that also includes fixation duration
+Exp1data_OL$RT_Trials <- Exp1data_OL$RT_Trials - Exp1data_OL$PreTargetDisplayTime
+
+#making sure screenbg is entered in every cell
+Exp1data_OL <- Exp1data_OL%>%group_by(participant)%>%fill(Screen_bg,.direction = "down")
+
+#filling up the blockscount
+Exp1data_OL <- Exp1data_OL %>% group_by(participant)%>%fill(blocks.thisRepN,.direction = "up")
+
+Exp1data_OL <- rename(Exp1data_OL, c("blocks.thisRepN" = "BlockCount"))
+
+Exp1data_OL <- Exp1data_OL %>% select(-blocks.ran,-blocks.thisIndex)
+```
+
+##### Data Preparation
+Since the data is now cleaned to an extent, next steps involves preparing the df
+  + Clearly identify the ACC and RT columns
+  + New column with error rate
+  + Removing the practice trials and learn trials
+  + Remove AttentionCheck 
+
+```{r dataprep, warning=FALSE, include=FALSE}
+Exp1data_OL$ACC_Trials <- Exp1data_OL$ResponseKey.corr
+
+#new columns for error rate
+Exp1data_OL$ErrorRate <- 1 - Exp1data_OL$ACC_Trials
+
+#removing practice and learn trials
+Exp1data_OL <- Exp1data_OL[!grepl("Practice","ExpfirstLearn", Exp1data_OL$Block),]
+Exp1data_OL <- Exp1data_OL[!grepl("learn", Exp1data_OL$Condition),]
+
+#removing other columsn related to practice
+Exp1data_OL <- Exp1data_OL %>%
+  select(-pracend.keys, -pracend.rt, -Prac_start.rt, -PracRepeat.ran, -PracRepeat.thisIndex, -PracRepeat.thisN, -PracRepeat.thisRepN, -PracRepeat.thisTrialN, -Prac_start.keys, -ResponseKey_p.corr,-ResponseKey_p.keys, -ResponseKey_p.rt)
+
+#get newly created vars to start of dataset
+Exp1data_OL <-Exp1data_OL %>%
+  select(RT_Trials, ACC_Trials, ErrorRate, everything())
+
+#removing the rows that contain NA like the block end/pause screens of the exp
+Exp1data_OL<- Exp1data_OL%>%drop_na(RT_Trials)
+
+detach(Exp1data_OL)
+#Saving this cleaned and prepared data frame
+#write.csv(Exp1data_OL, file = "Exp1data_Online_cleaned.csv")
+```
+
+
+### Descriptive Statistics
+The descriptive statistics of the sample are listed below
+
+```{r summarytable, echo=FALSE, warning=FALSE, message=FALSE}
+attach(Exp1data_OL)
+#Age
+pander(summary(Age), style = 'rmarkdown', caption = "Descriptive Statistics of Sample Age")
+pander((table(Age)/240), style = "rmarkdown", caption = "Number of participants per Age")
+
+#Gender
+pander((table(Gender)/240), style = "rmarkdown", caption = "Gender count")
+
+#Screen Background
+pander((table(Exp1data_OL$Screen_bg)/240), style = "rmarkdown", caption = "Screen background colour across participants")
+
+#Age x RT
+ggplot(Exp1data_OL, aes(x=Age, y = RT_Trials))+
+  geom_point(colour=Exp1data_OL$Age)+
+  ylab("Reaction Time")+
+  ggtitle("Reaction Time across each Age")
+
+#Mean RT
+pander(summary(Exp1data_OL$RT_Trials), style = 'rmarkdown', caption = "Summary of RT")
+
+#Accuracy
+pander(table(Exp1data_OL$ACC_Trials), style = 'rmarkdown', caption = "Number of correct and Incorrect trials")
+
+#Accuracy in percentage
+pander(round(table(Exp1data_OL$ACC_Trials)/nrow(Exp1data_OL)*100, digits = 3), style = 'rmarkdown', caption = "Percentage of errors")
+
+detach(Exp1data_OL)
+```
+
+
+### Removing Outliers and Farouts
+Outliers and Farouts are identified at the individual level and the respective RT columns are created : One for outliers (RT_io) and one for Farouts (RT_ifo)
+```{r FaroutsOutliers, warning=FALSE, echo=FALSE }
+#removing RT values for the incorrect trials
+Exp1data_OL$RT_Trials[Exp1data_OL$ACC_Trials==0] <- NA
+
+
+#creating function to remove the outliers and farouts
+computeTukeys <- function(x){
+  P25 <- quantile(x$RT_Trials, .25, na.rm = TRUE, type = 6) #type = 6 -> used in SPSS
+  P75 <- quantile(x$RT_Trials, .75, na.rm = TRUE, type = 6)
+  x$Outlier <- P75 + 1.5*(P75 - P25)
+  x$Farouts <- P75 + 3.0*(P75 - P25)
+  return(x)
+}
+
+
+#identifying the outliers and farouts at individual level
+Exp1data_OL <- ddply(Exp1data_OL, .(participant), computeTukeys)
+
+#creating new column with RT trials after removing outliers/farouts
+Exp1data_OL$RT_ifo <- Exp1data_OL$RT_Trials
+Exp1data_OL$RT_io <- Exp1data_OL$RT_Trials
+Exp1data_OL$RT_ifo[Exp1data_OL$RT_ifo > Exp1data_OL$Farouts|Exp1data_OL$RT_ifo < 300] <- NA
+Exp1data_OL$RT_io[Exp1data_OL$RT_io > Exp1data_OL$Outlier|Exp1data_OL$RT_io < 300] <- NA
+
+pander(summary(Exp1data_OL$RT_ifo), style = 'rmarkdown', caption = "Summary of RT after removing Farouts")
+pander(summary(Exp1data_OL$RT_io), style = 'rmarkdown', caption = "Summary of RT after removing Outliers")
+
+```
+
+## **STATISTICAL ANALYSIS** 
+
+Only the test trials are used for analysis. The following analyses are carried out separately for outliers and for farouts
+
+```{r prep, include=FALSE}
+#easy reference
+Exp1data_OL <- Exp1data_OL%>%select(Saliency, Validity, everything())
+
+#check design
+table(Exp1data_OL$Condition, Exp1data_OL$Saliency)
+
+```
+
+
+
+#### **Aggregate means for Standard Analysis : RT with Validity and Saliency as factors** 
+Aggregate means for the Standard Analysis are computed along with the average of that which is used for plotting
+```{r Aggregate, include=FALSE, warning=FALSE}
+###farouts
+Exp1agg_Standard_fo <- aggregate(data = Exp1data_OL, RT_ifo~participant+Saliency+Validity, mean)
+
+#convert to factors for ANOVA
+Exp1agg_Standard_fo$participant <- as.factor(Exp1agg_Standard_fo$participant)
+Exp1agg_Standard_fo$Saliency <- as.factor(Exp1agg_Standard_fo$Saliency)
+Exp1agg_Standard_fo$Validity <- as.factor(Exp1agg_Standard_fo$Validity)
+
+
+#aggregate means of farouts
+aggmeanSV_fo <- ezStats(data = Exp1agg_Standard_fo,
+                     dv = RT_ifo,
+                     wid = participant,
+                     within = .(Saliency, Validity))
+
+##OUTLIERS
+Exp1agg_Standard_o <- aggregate(data = Exp1data_OL, RT_io~participant+Saliency+Validity, mean)
+
+#Converting to factors for ANOVA
+Exp1agg_Standard_o$participant <- as.factor(Exp1agg_Standard_o$participant)
+Exp1agg_Standard_o$Saliency <- as.factor(Exp1agg_Standard_o$Saliency)
+Exp1agg_Standard_o$Validity <- as.factor(Exp1agg_Standard_o$Validity)
+
+
+#aggregate means of farouts
+aggmeanSV_o <- ezStats(data = Exp1agg_Standard_o,
+                     dv = RT_io,
+                     wid = participant,
+                     within = .(Saliency, Validity))
+
+```
+
+#### **Aggregate means for Standard Analysis : ErrorRate with Validity and Saliency as factors** 
+Aggregate ErrorRate was also calculated across each participant
+```{r Aggregate Error Rate, include=FALSE, warning=FALSE}
+aggER <- aggregate(data=Exp1data_OL, ErrorRate~participant+Validity+Saliency, mean)
+
+#Converting to factors for ANOVA
+aggER$participant <- as.factor(aggER$participant)
+aggER$Validity <- as.factor(aggER$Validity)
+aggER$Saliency <- as.factor(aggER$Saliency)
+
+#mean aggregate for plots
+aggmeanER <- ezStats(data = aggER,
+                     dv = ErrorRate,
+                     wid = participant,
+                     within = .(Saliency, Validity))
+
+```
+
+
+
+## *ANOVA & PLOTS* 
+
+### 1. Standard Analysis ANOVA with plot: FAROUTS removed
+```{r Stdanalysis, warning = FALSE}
+
+#using ezPackage
+standard_anova_fo <- ezANOVA(Exp1agg_Standard_fo,
+                    dv = RT_ifo,
+                    wid = participant,
+                    within = .(Saliency,Validity),
+                    detailed = TRUE,
+                    return_aov = TRUE)
+#anova_out(standard_anova_fo)
+
+#ANOVA results Table
+panderOptions('table.split.table',300)
+pander(standard_anova_fo, style = 'rmarkdown', caption = "Standard ANOVA table: RT(farouts) as a function of Saliency and Validity", split.table = Inf)
+
+pander(summary(aov(RT_ifo~Validity+Saliency+Validity*Saliency, data = Exp1agg_Standard_fo)),
+       style = "rmarkdown", caption = "ANOVA results using aov function")
+
+#plot
+# #ezPlot(Exp1agg_Standard_fo,
+#                     dv = RT_ifo,
+#                     wid = participant,
+#                     within = .(Saliency,Validity),
+#                     split=Validity,
+#                     x = Saliency,
+#                     do_bars = F)
+
+
+```
+**Plot showing the mean RT Trials with the factors of Validity and Saliency**
+
+```{r PlotsafterANOVA, warning = FALSE, echo = FALSE}
+#Plot for farouts
+
+ggplot(aggmeanSV_fo, aes(x=Validity, color=Saliency, y=Mean))+
+  geom_line(aes(group=Saliency))+
+  geom_point()+
+  labs(x="Saliency", y = "ReactionTime")+
+  theme_classic()+
+  ylim(550,600)+
+  ggtitle("Standard Analysis: RT(farouts) as function of saliency and validity")+
+  theme(plot.title = element_text(hjust = 0.5))+
+  theme(legend.title = element_text(size=14), legend.text= element_text(size=12))+
+  theme(axis.title = element_text(size=14),axis.text = element_text(size=12))
+
+
+```
+
+
+### 2. Standard Analysis ANOVA with plot: Outliers removed
+
+```{r ANOVa outliers, warning=FALSE}
+#outliers
+standard_anova_o <- ezANOVA(data = Exp1agg_Standard_o,
+                    dv = RT_io,
+                    wid = participant,
+                    within = .(Saliency,Validity),
+                    detailed = TRUE)
+#anova_out(standard_anova_o)
+
+panderOptions('table.split.table',300)
+pander(standard_anova_o, style = 'rmarkdown', caption = "Standard ANOVA table: RT(outliers) as a function of Saliency and Validity", split.table = Inf)
+
+pander(summary(aov(RT_io~1+Validity+Saliency+Validity*Saliency, data = Exp1agg_Standard_o)),
+       style = "rmarkdown", caption = "Results using aov function")
+# 
+# ezPlot(Exp1agg_Standard_o,
+#                     dv = RT_io,
+#                     wid = participant,
+#                     within = .(Saliency,Validity),
+#                     split=Validity,
+#                     x = Saliency,
+#                     do_bars = F)
+
+```
+
+
+**Plot of the data for the RTs with outliers removed with the meanRT including only the Saliency and Validity as factors**
+
+```{r OutlierPlot, echo=FALSE}
+#plot for RT wo outliers
+
+ggplot(aggmeanSV_o, aes(x=Saliency, color=Validity, y=Mean))+
+  geom_line(aes(group=Validity))+
+  geom_point()+
+  labs(x="Saliency", y = "ReactionTime")+
+  theme_classic()+
+  ylim(550,600)+
+  ggtitle("Standard Analysis: RT(Outliers) as function of saliency and validity")+
+  theme(plot.title = element_text(hjust = 0.5))+
+  theme(legend.title = element_text(size=12), legend.text= element_text(size=10))+
+  theme(axis.title = element_text(size=12),axis.text = element_text(size=10))
+```
+
+
+### 3. Standard Analysis with Error Rate
+
+```{r ANOVA Errorrate, warning=FALSE, echo=FALSE}
+
+anova_ER <- ezANOVA(data = aggER,
+                    dv = ErrorRate,
+                    wid = participant,
+                    within = .(Saliency,Validity),
+                    detailed = TRUE,
+                    return_aov = TRUE)
+#anova_out(anova_ER)
+
+panderOptions('table.split.table',300)
+pander(anova_ER, style = 'rmarkdown', caption = "Standard ANOVA table: Error Rates as a function of Saliency and Validity", split.table = Inf)
+
+pander(summary(aov(ErrorRate~1+Validity+Saliency+Validity*Saliency, data = aggER)),
+       style = "rmarkdown", caption = "Error rate Results using aov function")
+
+# ezPlot(aggER,
+#                     dv = ErrorRate,
+#                     wid = participant,
+#                     within = .(Saliency,Validity),
+#                     split=Validity,
+#                     x = Saliency,
+#                     do_bars = F)
+
+
+```
+
+
+## 4. Block analysis
+
+#### Farouts
+```{r Blockfarouts, warning = FALSE, echo=FALSE}
+aggBlock_fo <- aggregate(data = Exp1data_OL, RT_ifo~participant+Saliency+Validity+BlockCount, mean)
+
+meanaggBlock_fo <- ezStats(data = aggBlock_fo,
+                     dv = RT_ifo,
+                     wid = participant,
+                     within = .(Saliency, Validity,BlockCount))
+
+#Converting to factors for anova
+aggBlock_fo$participant <- as.factor(aggBlock_fo$participant)
+aggBlock_fo$Saliency <- as.factor(aggBlock_fo$Saliency)
+aggBlock_fo$Validity <- as.factor(aggBlock_fo$Validity)
+aggBlock_fo$BlockCount <- as.factor(aggBlock_fo$BlockCount)
+
+anova_Block_fo <- ezANOVA(data = aggBlock_fo,
+                    dv = RT_ifo,
+                    wid = participant,
+                    within = .(Saliency,Validity,BlockCount),
+                    detailed = TRUE,
+                    return_aov = TRUE)
+#anova_out(anova_Block_fo)
+
+panderOptions('table.split.table',300)
+pander(anova_Block_fo, style = 'rmarkdown', caption = "Standard ANOVA table: RT as a function of Saliency and Validity and Block", split.table = Inf)
+
+```
+Plot showing the RT mean with the function of validity and Saliency across the Blocks
+
+```{r Blockfar Plot, warning = FALSE, echo=FALSE}
+
+ggplot(meanaggBlock_fo, aes(x=Saliency, color=Validity, y=Mean))+
+  geom_line(aes(group=Validity))+
+  geom_point()+
+  facet_grid(.~BlockCount)+
+  labs(x="Saliency", y = "ReactionTime")+
+  theme_classic()+
+  ylim(550,600)+
+  ggtitle("Block Analysis: RT(Farouts) as function of saliency and validity across Blocks")+
+  theme(plot.title = element_text(hjust = 0.5))+
+  theme(legend.title = element_text(size=12), legend.text= element_text(size=10))+
+  theme(axis.title = element_text(size=12),axis.text = element_text(size=10))
+```
+
+#### Outliers
+
+```{r Blockout, warning = FALSE, echo=FALSE}
+aggBlock_o <- aggregate(data = Exp1data_OL, RT_io~participant+Saliency+Validity+BlockCount, mean)
+
+meanaggBlock_o <- ezStats(data = aggBlock_o,
+                     dv = RT_io,
+                     wid = participant,
+                     within = .(Saliency, Validity,BlockCount))
+
+#Converting to factors for anova
+aggBlock_o$participant <- as.factor(aggBlock_o$participant)
+aggBlock_o$Saliency <- as.factor(aggBlock_o$Saliency)
+aggBlock_o$Validity <- as.factor(aggBlock_o$Validity)
+aggBlock_o$BlockCount <- as.factor(aggBlock_o$BlockCount)
+
+anova_Block_o <- ezANOVA(data = aggBlock_o,
+                    dv = RT_io,
+                    wid = participant,
+                    within = .(Saliency,Validity,BlockCount),
+                    detailed = TRUE,
+                    return_aov = TRUE)
+#anova_out(anova_Block_o)
+
+panderOptions('table.split.table',300)
+pander(anova_Block_o, style = 'rmarkdown', caption = "Standard ANOVA table: RT(outliers removed) as a function of Saliency and Validity and Block", split.table = Inf)
+```
+
+**Plot showing the mean RT with Validity and Saliency as factors across each block**
+
+```{r blockoutplot, echo=FALSE}
+
+ggplot(meanaggBlock_o, aes(x=Saliency, color=Validity, y=Mean))+
+  geom_line(aes(group=Validity))+
+  geom_point()+
+  facet_grid(.~BlockCount)+
+  labs(x="Saliency", y = "ReactionTime")+
+  theme_classic()+
+  ylim(550,600)+
+  ggtitle("Block Analysis: RT(Outliers) as function of saliency and validity across Blocks")+
+  theme(plot.title = element_text(hjust = 0.5))+
+  theme(legend.title = element_text(size=12), legend.text= element_text(size=10))+
+  theme(axis.title = element_text(size=12),axis.text = element_text(size=10))
+```
+
+
+## Exploratory Analysis
+
+### 1. Age 
+
+No significant difference in the effect of validity or saliency in RT farouts and outliers
+```{r Age analysis, eval=FALSE}
+#subsetting the dataframe to only include participants less than 35
+Exp1data_OL_age <- Exp1data_OL%>%
+  subset(Age < 35)
+#creating aggregate with farouts removed
+Exp1agg_Age_fo <- aggregate(data = Exp1data_OL_age, RT_ifo~participant+Saliency+Validity, mean)
+
+#to factors
+Exp1agg_Age_fo$participant <- as.factor(Exp1agg_Age_fo$participant)
+Exp1agg_Age_fo$Saliency <- as.factor(Exp1agg_Age_fo$Saliency)
+Exp1agg_Age_fo$Validity <- as.factor(Exp1agg_Age_fo$Validity)
+
+#ANOVa
+Age_anova_fo <- ezANOVA(Exp1agg_Age_fo,
+                    dv = RT_ifo,
+                    wid = participant,
+                    within = .(Saliency,Validity),
+                    detailed = TRUE,
+                    )
+anova_out(Age_anova_fo)
+
+##Same process for outliers
+Exp1agg_Age_o <- aggregate(data = Exp1data_OL_age, RT_io~participant+Saliency+Validity, mean)
+
+Exp1agg_Age_o$participant <- as.factor(Exp1agg_Age_o$participant)
+Exp1agg_Age_o$Saliency <- as.factor(Exp1agg_Age_o$Saliency)
+Exp1agg_Age_o$Validity <- as.factor(Exp1agg_Age_o$Validity)
+
+Age_anova_o <- ezANOVA(Exp1agg_Age_o,
+                    dv = RT_io,
+                    wid = participant,
+                    within = .(Saliency,Validity),
+                    detailed = TRUE,
+                    return_aov = TRUE)
+anova_out(Age_anova_o)
+
+```
+
+#### 2. Bin Analysis
+No difference in the bin analysis. It was done by splitting the RT as quartiles to cross check with the E-prime range
+```{r binanalysis, eval=FALSE}
+#Splitting theRT distribution in quartiles to check whether the speed of RT shows differences in validity effect
+#outliers
+Exp1data_OL$Quantiles <- ntiles(Exp1data_OL,
+                                dv = "RT_Trials", 
+                                bins = 4)
+
+binagg <-  aggregate(data = Exp1data_OL, RT_ifo~participant+Saliency+Validity+Quantiles, mean)
+binanova <- aov(RT_ifo~Validity+Quantiles+Saliency+Validity*Saliency, data = binagg)
+summary(binanova)
+meanbin <- ddply(binagg, .(Validity,Saliency,Quantiles), summarize, mean=mean(RT_ifo))
+ggplot(meanbin, aes(x=Saliency, color=Validity, y=mean))+
+  geom_line(aes(group=Validity))+
+  geom_point()+
+  labs(x="Saliency", y = "ReactionTime")+
+  theme_classic()+
+  facet_grid(.~Quantiles)+
+  ggtitle("Standard Analysis: RT(Outliers) as function of saliency and validity")+
+  theme(plot.title = element_text(hjust = 0.5))+
+  theme(legend.title = element_text(size=12), legend.text= element_text(size=10))+
+  theme(axis.title = element_text(size=12),axis.text = element_text(size=10))
+```
+
+
+** 3. Speed Accuracy Tradeoff
+```{r plotRTvsACC,include=FALSE, eval=FALSE}
+
+ggplot(Exp1data_OL, aes(x=ACC_Trials, y=RT_Trials))+
+  geom_jitter(aes(color=Validity), alpha = 0.5)+
+  # geom_violin(aes(fill=Validity, group = ACC_Trials), alpha = 0.8)+
+  ggtitle("RT vs ACC")
+
+ggplot(Exp1data_OL, aes(x=ErrorRate, y=RT_Trials))+
+  geom_jitter(aes(color = Validity), alpha = 0.5)+
+  ggtitle("Rt vs ErrorRate")
+```
+
+
+** 4. explore data: participants with many slow and/or erroneous resp? 
+```{r slowand error, include = FALSE, eval=FALSE}
+#aggregate error rate per participant
+aggErr <- aggregate(data = Exp1data_OL, ErrorRate ~ participant, mean)
+#Boxplot 
+boxplot((aggErr$ErrorRate))
+
+#count RToutlier/farouts per participant
+Exp1data_OL$count_io <-ifelse(Exp1data_OL$RT_Trials>Exp1data_OL$Outlier,1,0)
+Exp1data_OL$count_ifo <-ifelse(Exp1data_OL$RT_Trials>Exp1data_OL$Farouts,1,0)
+
+#check
+Exp1data_OL<-Exp1data_OL%>%select(count_io, Outlier, RT_Trials, everything())
+
+
+agg_io <- aggregate(data = Exp1data_OL, count_io ~ participant, mean)     
+boxplot(agg_io$count_io)
+
+
+agg_ifo <- aggregate(data = Exp1data_OL, count_ifo ~ participant, mean)     
+boxplot(agg_ifo$count_ifo)
+```
+
+

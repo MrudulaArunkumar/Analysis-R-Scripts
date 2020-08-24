@@ -1,0 +1,692 @@
+---
+title: 'Exp1 Online: LastOccurence&PreviousResponse Analysis'
+author: "Mrudula & Carina"
+date: "8/24/2020"
+output: html_document
+---
+
+### Fundamentals 
+
+The datafiles from 60 participants were collected from pavlovia via prolific. All the data files have been combined together to one datafile. This datafile is loaded along with the necessary libraries needed for the data preparation/cleaning and analysis.
+```{r libraryload, message=FALSE, warning = FALSE, include=FALSE}
+#Recording the session of R in place at the time
+sessionInfo()
+#loading the necessary libraries
+library(tidyverse) #for data prep
+library(plyr)#also for data prep
+library(ez) #anova stats
+library(schoRsch) 
+library(lme4) #multilevel
+library(data.table)#for lag
+library(knitr)#for markdown
+library(pander)#for markdown tables 
+library(here) #useful to set up working directory
+library(rmarkdown) #for markdown
+
+#clearing up workspace 
+rm(list=ls())
+
+#setting up working directory at home office
+#setwd("C:/FSU Jena_PhD/Exp1/Analysis")
+#loading the combined datafile home office
+#Exp1data_OL <- read.csv("C:/FSU Jena_PhD/Exp1/Data/Exp1-Prolific/Exp1data_online_fullset.csv")
+
+#Office set up Mrudula
+setwd("D:/PhD/Exp1-Overshadowing/Analysis/R Scripts")
+set_here()
+
+#Office setup Carina
+#setwd("~/Daten/1 BRAC-FOR/overshadowing/Exp 1 Psychopy Mrudula/Analyses")
+
+#load from office
+Exp1data_OL <- read.csv("D:/PhD/Exp1-Overshadowing/Data/Exp1data_online_fullset.csv")
+
+#adding the dataframe to the search path to not repeat it everytime to select or name a column
+attach(Exp1data_OL)
+#remember to deattach() when you are done with it
+
+
+```
+
+### Cleaning the datafile
+
+To arrive at a clean datafile, certain columns are removed such as columns containing details with instructions, pauses attention Check, etc. 
+
+
+```{r cleandata, include = FALSE, message = FALSE, warning=FALSE}
+#removing unnecessary columns
+
+Exp1data_OL <- Exp1data_OL %>%
+  select(-Attention.thisRepN,-Attention.thisTrialN,-Attention.thisIndex,-Attention.ran,
+         -id, -session, -researcher, -InstRep.thisRepN,-InstRep.thisIndex,-InstRep.thisN, -InstRep.thisTrialN,
+         -PracRepeat.thisRepN,-PracRepeat.thisIndex,-PracRepeat.thisN, -PracRepeat.thisTrialN,
+         -prctrials.thisIndex,-prctrials.thisRepN,-prctrials.thisTrialN,-prctrials.ran,
+         -firstlearntrials.thisN,-firstlearntrials.thisRepN,-firstlearntrials.thisTrialN,-firstlearntrials.ran,-firstlearntrials.thisIndex,
+         -afterpause.keys,-InstRep.ran,-consentkey.keys,-consentkey.rt,-beginexp.keys,-beginexp.rt,-checkresp.corr,-checkresp.keys,-checkresp.rt,-Attention.thisN,-Question,-Solution,-gotoPrac.keys,-gotoPrac.rt,-PracRepeat.ran,-prctrials.thisN,-afterpause.rt,-blocks.thisN, -todebrief.rt, -todebrief.keys, -ExpExit.keys, -ExpExit.rt
+         )
+#removing the first column named x
+Exp1data_OL <- subset(Exp1data_OL, select = -c(X))
+
+#get RT variable to start of dataset
+Exp1data_OL <-Exp1data_OL %>%
+  select(ResponseKey.rt, PreTargetDisplayTime, Block, everything())
+```
+
+
+The column containing the RTs is split because some rows contain more than one RT because the psychopy is designed in such a way that only upon the correct answer the next trial is presented. So in trials that are incorrect there will be more than one RT value registered. However we are only interested in the first response, hence the RT column is split to contain the first response time in a separate column. RTs should also be changed to double as they are represented as strings initially (with the presence of commas and square brackets) 
+
+These RT values are further edited:
+* Psychopy originally evaluated the RTs from 400ms irrespective of the PreTrial Display time
+* Hence, to the RT value, 400ms is added and later subtracted by the PreTrialDisplay time(also includes fixation cross) (in ms) for each trial
+
+```{r RTprep, include=FALSE }
+#Splitting up the RT column to be able to evaluate the RTs
+Exp1data_OL <- separate(Exp1data_OL, col = ResponseKey.rt, into = c("RT_Trials", "RT_secondary"), sep = ",")
+
+#removing the square bracket and changing from string to numeric
+Exp1data_OL$RT_Trials <- Exp1data_OL$RT_Trials %>% 
+  str_replace_all("\\[|\\]", "")%>%
+  as.double(Exp1data_OL$RT_Trials)
+
+#converting RT and PreTarget DIsplay time values in ms 
+Exp1data_OL$RT_Trials <- 1000*(Exp1data_OL$RT_Trials)
+Exp1data_OL$PreTargetDisplayTime <- 1000 * Exp1data_OL$PreTargetDisplayTime
+
+
+#renaming it to OldRT to have a copy and later transform the RT values based on the time calculated in psychopy
+names(Exp1data_OL)[names(Exp1data_OL)=="RT_Trials"] <- "Old_RT"
+Exp1data_OL$RT_Trials <- Exp1data_OL$Old_RT
+
+#to check frequency of each value in the column
+table(Exp1data_OL$PreTargetDisplayTime)
+
+#adjusting RT
+Exp1data_OL$RT_Trials <- 400+Exp1data_OL$RT_Trials #adding the 400ms that was coded in psychopy after which RT is evaluated
+#Removing the preinterval display duration that also includes fixation duration
+Exp1data_OL$RT_Trials <- Exp1data_OL$RT_Trials - Exp1data_OL$PreTargetDisplayTime
+
+#making sure screenbg is entered in every cell
+Exp1data_OL <- Exp1data_OL%>%group_by(participant)%>%fill(Screen_bg,.direction = "down")
+Exp1data_OL <- Exp1data_OL %>% group_by(participant)%>%fill(blocks.thisRepN,.direction = "up")
+
+names(Exp1data_OL)[names(Exp1data_OL)=="blocks.thisRepN"] <- "BlockCount"
+
+Exp1data_OL <- Exp1data_OL %>% 
+  select(-blocks.ran,-blocks.thisIndex,-blocks.thisN,-blocks.thisTrialN)
+```
+
+### Data Preparation
+Since the data is now cleaned to an extent, next steps involves preparing the df
+*Clearly identify the ACC and RT columns
+*New column with error rate
+*Removing the practice trials - Keep the learn trials for previous occurence and last response analysis
+*Remove AttentionCheck 
+
+
+```{r dataprep, warning=FALSE, include=FALSE}
+Exp1data_OL$ACC_Trials <- Exp1data_OL$ResponseKey.corr
+
+#new columns for error rate
+Exp1data_OL$ErrorRate <- 1 - Exp1data_OL$ACC_Trials
+
+#removing practice and learn trials
+Exp1data_OL <- Exp1data_OL[!grepl("Practice", Exp1data_OL$Block),]
+
+
+#removing other columsn related to practice
+Exp1data_OL <- Exp1data_OL %>%
+  select(-pracend.keys, -pracend.rt, -Prac_start.rt, -PracRepeat.ran, -PracRepeat.thisIndex, -PracRepeat.thisN, -PracRepeat.thisRepN, -PracRepeat.thisTrialN, -Prac_start.keys, -ResponseKey_p.corr,-ResponseKey_p.keys, -ResponseKey_p.rt)
+
+#get newly created vars to start of dataset
+Exp1data_OL <-Exp1data_OL %>%
+  select(RT_Trials, ACC_Trials, ErrorRate, everything())
+
+#removing the rows that contain NA like the block end/pause screens of the exp
+Exp1data_OL<- Exp1data_OL%>%drop_na(RT_Trials)
+
+detach(Exp1data_OL)
+#Saving this cleaned and prepared data frame
+#write.csv(Exp1data_OL, file = "Exp1data_Online_cleaned.csv")
+```
+
+
+### Descriptive Statistics
+The descriptive statistics of the sample are listed below
+
+```{r summarytable, echo=FALSE, warning=FALSE, message=FALSE}
+attach(Exp1data_OL)
+#Age
+pander(summary(Age), style = 'rmarkdown', caption = "Descriptive Statistics of Sample Age")
+pander((table(Age)/240), style = "rmarkdown", caption = "Number of participants per Age")
+
+#Gender
+pander((table(Gender)/240), style = "rmarkdown", caption = "Gender count")
+
+
+#Mean RT
+pander(summary(Exp1data_OL$RT_Trials), style = 'rmarkdown', caption = "Summary of RT")
+#Accuracy
+pander(table(Exp1data_OL$ACC_Trials), style = 'rmarkdown', caption = "Number of correct and Incorrect trials")
+#Accuracy in percentage
+pander(round(table(Exp1data_OL$ACC_Trials)/nrow(Exp1data_OL)*100, digits = 3), style = 'rmarkdown', caption = "Percentage of errors")
+
+```
+
+
+### Removing Outliers and Farouts
+Outliers and Farouts are identified at the individual level and the respective RT columns are created : One for outliers (RT_io) and one for Farouts (RT_ifo)
+```{r FaroutsOutliers, warning=FALSE, echo=FALSE }
+#removing RT values for the incorrect trials
+Exp1data_OL$RT_Trials[Exp1data_OL$ACC_Trials==0] <- NA
+
+
+#creating function to remove the outliers and farouts
+computeTukeys <- function(x){
+  P25 <- quantile(x$RT_Trials, .25, na.rm = TRUE, type = 6) #type = 6 -> used in SPSS
+  P75 <- quantile(x$RT_Trials, .75, na.rm = TRUE, type = 6)
+  x$Outlier <- P75 + 1.5*(P75 - P25)
+  x$Farouts <- P75 + 3.0*(P75 - P25)
+  return(x)
+}
+
+#identifying the outliers and farouts at individual level
+Exp1data_OL <- ddply(Exp1data_OL, .(participant), computeTukeys)
+
+#creating new column with RT trials after removing outliers/farouts
+Exp1data_OL$RT_ifo <- Exp1data_OL$RT_Trials
+Exp1data_OL$RT_io <- Exp1data_OL$RT_Trials
+Exp1data_OL$RT_ifo[Exp1data_OL$RT_ifo > Exp1data_OL$Farouts|Exp1data_OL$RT_ifo < 300] <- NA
+Exp1data_OL$RT_io[Exp1data_OL$RT_io > Exp1data_OL$Outlier|Exp1data_OL$RT_io < 300] <- NA
+
+pander(summary(Exp1data_OL$RT_ifo), style = 'rmarkdown', caption = "Summary of RT after removing Farouts")
+pander(summary(Exp1data_OL$RT_io), style = 'rmarkdown', caption = "Summary of RT after removing Outliers")
+
+```
+
+
+## Computing Previous Occurence
+
+After identifying Outliers and Farouts, we move onto identifying the previous or last occurence of a specific Word/Distractor. How many trials ago was the last time a particular Distractor word appeared?
+
+```{r include=FALSE}
+
+#alternatively, moving relevant columns to the first position(s) for even easier reference ;)
+Exp1data_OL <- Exp1data_OL%>%select(Condition, Distractor1, Distractor2, everything())
+```
+
+Now, First step is to add a column that contains the value of how far the previous occurence was. It contains the lag variable. First step is to code the variables where the last occurence was the **immediately** preceding trial(where lag = 1). 
+
+```{r immediatelag, echo=FALSE}
+#For TEST Trials
+#Giving a default value of far for the Distance column
+Exp1data_OL$Distance <- NA
+Exp1data_OL <- Exp1data_OL %>%
+  mutate(Distance = ifelse(lag(Condition,1)=="test" & 
+              (lag(Distractor1,1)==Distractor1|lag(Distractor1,1)==Distractor2) &
+                            lag(participant,1)==participant &
+                            lag(ACC_Trials,1)== 1, 1, Distance))
+#For LEARN trials 
+Exp1data_OL <- Exp1data_OL %>%
+  mutate(Distance = ifelse(lag(Condition,1)=="learn" &                           (lag(Distractor1,1)==Distractor1|lag(Distractor1,1)==Distractor2|lag(Distractor2,1)==Distractor1) & lag(participant,1)==participant &  lag(ACC_Trials,1)== 1, 1, Distance))
+```
+
+Here is the number of the trials where the last occurence was the immediately preceding ones (Binding trials)
+
+```{r table, results='asis', echo=FALSE}
+#The number of immediate previous occurences
+pander(table(Exp1data_OL$Distance), style = 'rmarkdown', caption = "Table showing the number of immediate previous occurence")
+sum(is.na(Exp1data_OL$Distance))
+
+
+```
+This is continued further by adding values for previous occurence that were not the immediately preceding  (eg. n-2, n-3, n-4....)
+
+```{r morelags, warning=FALSE, echo=FALSE}
+lagvalue <- 2:30
+
+#For learn trials and test trials together
+
+for(j in lagvalue){
+  Exp1data_OL <- Exp1data_OL %>% 
+    mutate(Distance = ifelse((lag(Condition,j)=="learn"|lag(Condition,j)=="test") &                     (lag(Distractor1,j)==Distractor1|lag(Distractor1,j)==Distractor2|lag(Distractor2,j)==Distractor1) & lag(participant,j)==participant & lag(ACC_Trials,j)== 1 & is.na(Distance)==TRUE, j, Distance))
+}
+
+pander(table(Exp1data_OL$Distance), style = 'rmarkdown', caption = "Table showing the number of total previous occurences and how far each of them are")
+sum(is.na(Exp1data_OL$Distance))
+
+
+```
+
+
+## Previous response 
+
+The following steps aim to check whether the response was repeated or different w.r.t to the previous trial
+First,another column is created that contains the values "RR" or "RC" based on whether the response is repeated or changed respectively.
+
+* Using lag function to look back at trials to check whether the response was same or different the last time that occurence happened.
+  + If, for example, the previous time Tisch|Kreis occured was a valid test trial 3 rows back where the response expected was "l" then the responsetype column would have the value "RR"
+
+```{r Prevresp, warning=FALSE, echo=FALSE}
+Exp1data_OL$ResponseType <- NA
+#moving this column to the last for easy reference
+Exp1data_OL <- Exp1data_OL%>%select(CorrectAnswer,everything())
+
+#coding repeating the same response and if the conditions are not true the RC is evaluated under the else clause within the main ifelse statement. This was done to avoid revaluating and missing out values that are originally RC but was treated as RR as that was evaluated first.
+Rmlag <- 1:30
+for(k in Rmlag){
+Exp1data_OL <- Exp1data_OL %>% 
+  mutate(ResponseType = ifelse((lag(Condition,k)=="learn" | lag(Condition,k)=="test") &          (lag(Distractor1,k)==Distractor1|lag(Distractor1,k)==Distractor2|lag(Distractor2,k)==Distractor1) & lag(participant,k)==participant & lag(CorrectAnswer,k)== CorrectAnswer & is.na(ResponseType)==TRUE, "RR", ifelse((lag(Condition,k)=="learn"|lag(Condition,k)=="test") & (lag(Distractor1,k)==Distractor1|lag(Distractor1,k)==Distractor2|lag(Distractor2,k)==Distractor1)& lag(participant,k)==participant & lag(CorrectAnswer,k)!= CorrectAnswer & is.na(ResponseType)==TRUE, "RC", ResponseType)))
+}
+
+pander(table(Exp1data_OL$ResponseType),style = 'rmarkdown', caption = "Total number of RRs and RCs")
+sum(is.na(Exp1data_OL$ResponseType))
+
+
+#crosstable to check factorial combination of Distance x Response Type:
+pander(table(Exp1data_OL$Distance, Exp1data_OL$ResponseType), style = 'rmarkdown', caption = 'Factorial combination of Distance x Response Type')
+
+#crosstable to check factorial combination of Distance x Response Type x COndition:
+pander(table(Exp1data_OL$Distance, Exp1data_OL$ResponseType, Exp1data_OL$Condition), caption = "Factorial combination of Distance x ResponseType x Condition")
+
+Exp1data_OL <- Exp1data_OL%>%
+  select(Distance,ResponseType, everything())
+```
+
+
+
+```{r Plot based on ResponseType, warning=FALSE, message = FALSE, include=FALSE}
+# ##FAROUTS
+# ggplot(Exp1data_OL, aes(x=ResponseType, y=RT_ifo))+
+#   geom_violin(aes(fill = Validity), alpha = 0.2)+
+#   geom_point(aes(colour=Validity, group = Validity),position = position_jitterdodge())+
+#   ylab("Reaction Time")+
+#   facet_grid(.~Saliency)+
+#   theme_classic()+
+#   ggtitle("Distribution of RT(farouts) based on Response Type for all trials")
+# 
+# Exp1data_OL %>% filter(Distance == 1) %>% 
+#   ggplot(aes(ResponseType,RT_ifo))+
+#   geom_violin(aes(fill = Validity), alpha = 0.2)+
+#   geom_point(aes(colour=Validity, group = Validity),position = position_jitterdodge())+
+#   ylab("Reaction Time")+
+#   facet_grid(.~Saliency)+
+#   theme_classic()+
+#   ggtitle("Distribution of RT(farouts) based on Response Type only for immediate occurrences")
+# 
+# ##OUtliers
+# ggplot(Exp1data_OL, aes(x=ResponseType, y=RT_io))+
+#   geom_violin(aes(fill = Validity), alpha = 0.2)+
+#   geom_point(aes(colour=Validity, group = Validity),position = position_jitterdodge())+
+#   ylab("Reaction Time")+
+#   facet_grid(.~Saliency)+
+#   theme_classic()+
+#   ggtitle("Distribution of RT(outliers) based on Response Type for all trials")
+# 
+# Exp1data_OL %>% filter(Distance == 1) %>% 
+#   ggplot(aes(ResponseType,RT_io))+
+#   geom_violin(aes(fill = Validity), alpha = 0.2)+
+#   geom_point(aes(colour=Validity, group = Validity),position = position_jitterdodge())+
+#   ylab("Reaction Time")+
+#   facet_grid(.~Saliency)+
+#   theme_classic()+
+#   ggtitle("Distribution of RT(outliers) based on Response Type only for immediate occurrences")
+
+```
+
+### The condition(test/learn) of the last occurence
+Here another column is added to check whether the last occurence was a learn or a test trial
+
+```{r LastOcc condition, include=FALSE}
+#creating new column
+Exp1data_OL$LastOcc_Condition <- NA
+
+                                   
+Exp1data_OL <- Exp1data_OL %>%
+  mutate(LastOcc_Condition = ifelse(lag(Condition,1)=="test" & 
+              (lag(Distractor1,1)==Distractor1|lag(Distractor1,1)==Distractor2) &
+                            lag(participant,1)==participant &
+                            lag(ACC_Trials,1)== 1, "test", LastOcc_Condition))
+
+Exp1data_OL <- Exp1data_OL %>%
+  mutate(LastOcc_Condition = ifelse(lag(Condition,1)=="learn" & 
+              (lag(Distractor1,1)==Distractor1|lag(Distractor1,1)==Distractor2) &
+                            lag(participant,1)==participant &
+                            lag(ACC_Trials,1)== 1, "learn", LastOcc_Condition))
+
+#Checking the condition for each lag
+for(l in lagvalue){
+Exp1data_OL <- Exp1data_OL %>% 
+  mutate(LastOcc_Condition = ifelse((lag(Condition,l)=="learn") &          (lag(Distractor1,l)==Distractor1|lag(Distractor1,l)==Distractor2|lag(Distractor2,l)==Distractor1) & lag(participant,l)==participant & lag(ACC_Trials,l)==1 & is.na(LastOcc_Condition)==TRUE, "learn", ifelse((lag(Condition,l)=="test") & (lag(Distractor1,l)==Distractor1|lag(Distractor1,l)==Distractor2|lag(Distractor2,l)==Distractor1)& lag(participant,l)==participant & lag(ACC_Trials,l)== 1 & is.na(LastOcc_Condition)==TRUE, "test", LastOcc_Condition)))
+}
+
+
+table(Exp1data_OL$LastOcc_Condition)
+Exp1data_OL <- Exp1data_OL %>% 
+  select(LastOcc_Condition,everything())
+  
+```
+
+## STATISTICAL ANALYSIS
+All the learning trials are removed, since only the test trials are used for analysis
+
+```{r include=FALSE}
+Exp1data_OL <- Exp1data_OL[!grepl("learn", Exp1data_OL$Condition),]
+```
+
+#### **1. Aggregate the means with the factors ResponseType, Distance, Saliency, Validity** 
+Creating a dataframe with the Mean RT across the factors of saliency and validity along with ResponseType and Distance. Separately for farouts and outliers so that it can be distinguished during analysis
+```{r aggregate1, warning=FALSE, echo=FALSE}
+#farouts
+Exp1agg_fo <- aggregate(data = Exp1data_OL, RT_ifo~participant+Saliency+Validity+ResponseType+Distance, mean)
+
+aggDistRespSV <- ddply(Exp1agg_fo, .(Validity,Saliency,ResponseType,Distance), summarize, RTmean=mean(RT_ifo))
+
+#pander(table(Exp1agg_fo$Distance, Exp1agg_fo$ResponseType),style = 'rmarkdown', caption = "Distance x ResponseType")
+
+#Converting to factors for ANOVA
+Exp1agg_fo$participant <- as.factor(Exp1agg_fo$participant)
+Exp1agg_fo$Saliency <- as.factor(Exp1agg_fo$Saliency)
+Exp1agg_fo$Validity <- as.factor(Exp1agg_fo$Validity)
+Exp1agg_fo$ResponseType <- as.factor(Exp1agg_fo$ResponseType)
+Exp1agg_fo$Distance <- as.factor(Exp1agg_fo$Distance)
+
+
+###outliers
+Exp1agg_o <- aggregate(data = Exp1data_OL, RT_io~participant+Saliency+Validity+ResponseType+Distance, mean)
+
+
+aggDistRespSV_o<- ddply(Exp1agg_o, .(Validity,Saliency,ResponseType,Distance), summarize, RTmean = mean(RT_io))
+
+#Converting to factors for ANOVA
+Exp1agg_o$participant <- as.factor(Exp1agg_o$participant)
+Exp1agg_o$Saliency <- as.factor(Exp1agg_o$Saliency)
+Exp1agg_o$Validity <- as.factor(Exp1agg_o$Validity)
+Exp1agg_o$ResponseType <- as.factor(Exp1agg_o$ResponseType)
+Exp1agg_o$Distance <- as.factor(Exp1agg_o$Distance)
+
+
+# table(Exp1agg_o$participant)
+# sum(is.na(Exp1agg_o$RT_io))
+
+```
+
+#### **2. Aggregate the means with the factors ResponseType, Saliency, Validity** 
+Creating a dataframe with the Mean RT across the factors of saliency and validity along with ResponseType. Separately for farouts and outliers so that it can be distinguished during analysis
+```{r aggregateResp2, warning=FALSE, echo=FALSE}
+#farouts
+Exp1agg_Resp_fo <- aggregate(data = Exp1data_OL, RT_ifo~participant+Saliency+Validity+ResponseType, mean)
+
+aggRespSV <- ddply(Exp1agg_Resp_fo, .(Validity,Saliency,ResponseType), summarize, RTmean=mean(RT_ifo))
+
+#pander(table(Exp1agg_fo$Distance, Exp1agg_fo$ResponseType),style = 'rmarkdown', caption = "Distance x ResponseType")
+
+#Converting to factors for ANOVA
+Exp1agg_Resp_fo$participant <- as.factor(Exp1agg_Resp_fo$participant)
+Exp1agg_Resp_fo$Saliency <- as.factor(Exp1agg_Resp_fo$Saliency)
+Exp1agg_Resp_fo$Validity <- as.factor(Exp1agg_Resp_fo$Validity)
+Exp1agg_Resp_fo$ResponseType <- as.factor(Exp1agg_Resp_fo$ResponseType)
+
+
+
+###outliers
+Exp1agg_Resp_o <- aggregate(data = Exp1data_OL, RT_io~participant+Saliency+Validity+ResponseType, mean)
+
+
+aggRespSV_o<- ddply(Exp1agg_o, .(Validity,Saliency,ResponseType), summarize, RTmean = mean(RT_io))
+
+#Converting to factors for ANOVA
+Exp1agg_Resp_o$participant <- as.factor(Exp1agg_Resp_o$participant)
+Exp1agg_Resp_o$Saliency <- as.factor(Exp1agg_Resp_o$Saliency)
+Exp1agg_Resp_o$Validity <- as.factor(Exp1agg_Resp_o$Validity)
+Exp1agg_Resp_o$ResponseType <- as.factor(Exp1agg_Resp_o$ResponseType)
+
+
+
+# table(Exp1agg_o$participant)
+# sum(is.na(Exp1agg_o$RT_io))
+
+```
+
+
+#### **3. Aggregate the means with the factors ResponseType, Saliency, Validity and LastOccurence Condition** 
+Creating a dataframe with the Mean RT across the factors of saliency and validity along with ResponseType and last occurence condition. Separately for farouts and outliers so that it can be distinguished during analysis
+```{r aggregateResp3, warning=FALSE, echo=FALSE}
+#farouts
+Exp1agg_RespLC_fo <- aggregate(data = Exp1data_OL, RT_ifo~participant+Saliency+Validity+ResponseType+LastOcc_Condition, mean)
+
+aggRespLCSV <- ddply(Exp1agg_RespLC_fo, .(Validity,Saliency,ResponseType,LastOcc_Condition), summarize, RTmean=mean(RT_ifo))
+
+#pander(table(Exp1agg_fo$Distance, Exp1agg_fo$ResponseType),style = 'rmarkdown', caption = "Distance x ResponseType")
+
+#Converting to factors for ANOVA
+Exp1agg_RespLC_fo$participant <- as.factor(Exp1agg_RespLC_fo$participant)
+Exp1agg_RespLC_fo$Saliency <- as.factor(Exp1agg_RespLC_fo$Saliency)
+Exp1agg_RespLC_fo$Validity <- as.factor(Exp1agg_RespLC_fo$Validity)
+Exp1agg_RespLC_fo$ResponseType <- as.factor(Exp1agg_RespLC_fo$ResponseType)
+
+
+
+###outliers
+Exp1agg_RespLC_o <- aggregate(data = Exp1data_OL, RT_io~participant+Saliency+Validity+ResponseType+LastOcc_Condition, mean)
+
+
+aggRespLCSV_o<- ddply(Exp1agg_RespLC_o, .(Validity,Saliency,ResponseType,LastOcc_Condition), summarize, RTmean = mean(RT_io))
+
+#Converting to factors for ANOVA
+Exp1agg_RespLC_o$participant <- as.factor(Exp1agg_RespLC_o$participant)
+Exp1agg_RespLC_o$Saliency <- as.factor(Exp1agg_RespLC_o$Saliency)
+Exp1agg_RespLC_o$Validity <- as.factor(Exp1agg_RespLC_o$Validity)
+Exp1agg_RespLC_o$ResponseType <- as.factor(Exp1agg_RespLC_o$ResponseType)
+
+
+
+
+```
+
+
+#### **4. Aggregate the means with the factors ResponseType, Saliency, Validity,Distance and LastOccurence Condition** 
+Creating a dataframe with the Mean RT across the factors of saliency and validity along with ResponseType and last occurence condition. Separately for farouts and outliers so that it can be distinguished during analysis
+```{r aggregateResp4, warning=FALSE, echo=FALSE}
+#farouts
+Exp1agg_RespDistLC_fo <- aggregate(data = Exp1data_OL, RT_ifo~participant+Saliency+Validity+ResponseType+LastOcc_Condition+Distance, mean)
+
+aggRespDistLCSV <- ddply(Exp1agg_RespDistLC_fo, .(Validity,Saliency,ResponseType,LastOcc_Condition,Distance), summarize, RTmean=mean(RT_ifo))
+
+#pander(table(Exp1agg_fo$Distance, Exp1agg_fo$ResponseType),style = 'rmarkdown', caption = "Distance x ResponseType")
+
+#Converting to factors for ANOVA
+Exp1agg_RespDistLC_fo$participant <- as.factor(Exp1agg_RespDistLC_fo$participant)
+Exp1agg_RespDistLC_fo$Saliency <- as.factor(Exp1agg_RespDistLC_fo$Saliency)
+Exp1agg_RespDistLC_fo$Validity <- as.factor(Exp1agg_RespDistLC_fo$Validity)
+Exp1agg_RespDistLC_fo$ResponseType <- as.factor(Exp1agg_RespDistLC_fo$ResponseType)
+
+
+
+###outliers
+Exp1agg_RespDistLC_o <- aggregate(data = Exp1data_OL, RT_io~participant+Saliency+Validity+ResponseType+LastOcc_Condition+Distance, mean)
+
+
+aggRespDistLCSV_o<- ddply(Exp1agg_RespDistLC_o, .(Validity,Saliency,ResponseType,LastOcc_Condition,Distance), summarize, RTmean = mean(RT_io))
+
+#Converting to factors for ANOVA
+Exp1agg_RespDistLC_o$participant <- as.factor(Exp1agg_RespDistLC_o$participant)
+Exp1agg_RespDistLC_o$Saliency <- as.factor(Exp1agg_RespDistLC_o$Saliency)
+Exp1agg_RespDistLC_o$Validity <- as.factor(Exp1agg_RespDistLC_o$Validity)
+Exp1agg_RespDistLC_o$ResponseType <- as.factor(Exp1agg_RespDistLC_o$ResponseType)
+
+
+```
+
+
+## ANOVA & PLOTS
+
+### 1. ANOVA with RT and the factors of Validity, Saliency and ResponseType
+#### Farouts
+```{r AnovaResp1, warning=FALSE}
+anova_Resp <- aov(RT_ifo~Validity+Saliency+ResponseType+
+                       ResponseType*Validity+
+                       Validity*Saliency+
+                       Saliency*ResponseType+
+                       ResponseType*Saliency*Validity,
+                     data=Exp1agg_Resp_fo)
+pander(summary(anova_Resp),style="rmarkdown",caption = "ANOVA Results of RT(Farouts) x Validity, Saliency and responseType")
+```
+
+#### Plot with ResponseTypeXSaliencyXValidity
+
+```{r plotResp1, echo=FALSE}
+ggplot(aggRespSV, aes(ResponseType,RTmean,color = Validity)) +
+  geom_line(aes(group=Validity))+
+  geom_point()+
+  labs(x="Response Type", y = "ReactionTime")+
+  ylim(520,620)+
+  facet_grid(.~Saliency)+
+  theme_classic()
+```
+
+#### Outliers
+
+```{r AnovaResp2, warning=FALSE}
+anova_Resp_o <- aov(RT_io~Validity+Saliency+ResponseType+
+                       ResponseType*Validity+
+                       Validity*Saliency+
+                       Saliency*ResponseType+
+                       ResponseType*Saliency*Validity,
+                     data=Exp1agg_Resp_o)
+pander(summary(anova_Resp_o),style="rmarkdown",caption = "ANOVA Results of RT(Farouts) x Validity, Saliency and responseType")
+```
+
+
+#### Plot with ResponseTypeXSaliencyXValidity
+
+```{r plotResp2, echo=FALSE}
+ggplot(aggRespSV_o, aes(ResponseType,RTmean,color = Validity)) +
+  geom_line(aes(group=Validity))+
+  geom_point()+
+  labs(x="Response Type", y = "ReactionTime")+
+  ylim(520,620)+
+  facet_grid(.~Saliency)+
+  theme_classic()
+```
+
+### 2. ANOVA with RT and the factors of Validity, Saliency, ResponseType and Distance
+
+#### Farouts
+```{r AnovaResp3, warning=FALSE}
+anova_DistResp <- aov(RT_ifo~Validity+Saliency+ResponseType+Distance+
+                       ResponseType*Validity+
+                         ResponseType*Distance+
+                       Validity*Saliency+
+                         Validity*Distance+
+                         Saliency*Distance+
+                        ResponseType*Validity*Distance+
+                         Saliency*Validity*Distance+
+                       Saliency*ResponseType+
+                       ResponseType*Saliency*Validity+
+                         ResponseType*Saliency*Validity*Distance,
+                     data=Exp1agg_fo)
+pander(summary(anova_DistResp),style="rmarkdown",caption = "ANOVA Results of RT x Validity, Saliency,Distance and responseType")
+```
+
+```{r plotResp, echo=FALSE, include=FALSE}
+## Plot with ResponseTypeXSaliencyXValidity
+ggplot(aggDistRespSV, aes(ResponseType,RTmean,color = Validity)) +
+  geom_line(aes(group=Validity))+
+  geom_point()+
+  labs(x="Response Type", y = "ReactionTime")+
+  ylim(520,620)+
+  facet_grid(.~Saliency)+
+  facet_wrap(~Distance)+
+  theme_classic()
+
+```
+
+#### outliers
+
+```{r AnovaResp4, warning=FALSE}
+anova_DistResp_o <- aov(RT_io~Validity+Saliency+ResponseType+Distance+
+                       ResponseType*Validity+
+                         ResponseType*Distance+
+                       Validity*Saliency+
+                         Validity*Distance+
+                         Saliency*Distance+
+                        ResponseType*Validity*Distance+
+                         Saliency*Validity*Distance+
+                       Saliency*ResponseType+
+                       ResponseType*Saliency*Validity+
+                         ResponseType*Saliency*Validity*Distance,
+                     data=Exp1agg_o)
+pander(summary(anova_DistResp_o),style="rmarkdown",caption = "ANOVA Results of RT(OUtliers) x Validity, Saliency,Distance and responseType")
+```
+
+### 3. ANOVA with RT and the factors of Validity, Saliency, ResponseType and LastOccurence Condition
+
+#### Farouts
+```{r AnovaResp5, warning=FALSE}
+anova_RespLC <- aov(RT_ifo~Validity+Saliency+ResponseType+LastOcc_Condition+
+                       ResponseType*Validity+
+                         ResponseType*LastOcc_Condition+
+                       Validity*Saliency+
+                         Validity*LastOcc_Condition+
+                         Saliency*LastOcc_Condition+
+                        ResponseType*Validity*LastOcc_Condition+
+                         Saliency*Validity*LastOcc_Condition+
+                       Saliency*ResponseType+
+                       ResponseType*Saliency*Validity+
+                         ResponseType*Saliency*Validity*LastOcc_Condition,
+                     data=Exp1agg_RespLC_fo)
+pander(summary(anova_RespLC),style="rmarkdown",caption = "ANOVA Results of RT x Validity, Saliency,LastOccurence condition and responseType")
+```
+
+
+#### outliers
+
+```{r AnovaResp6, warning=FALSE}
+anova_RespLC_o <- aov(RT_io~Validity+Saliency+ResponseType+LastOcc_Condition+
+                       ResponseType*Validity+
+                         ResponseType*LastOcc_Condition+
+                       Validity*Saliency+
+                         Validity*LastOcc_Condition+
+                         Saliency*LastOcc_Condition+
+                        ResponseType*Validity*LastOcc_Condition+
+                         Saliency*Validity*LastOcc_Condition+
+                       Saliency*ResponseType+
+                       ResponseType*Saliency*Validity+
+                         ResponseType*Saliency*Validity*LastOcc_Condition,
+                     data=Exp1agg_RespLC_o)
+pander(summary(anova_RespLC_o),style="rmarkdown",caption = "ANOVA Results of RT(OUtliers) x Validity, Saliency, LastOccurence's Condition and responseType")
+```
+
+### 4. ANOVA with RT and the factors of Validity, Saliency, ResponseType and LastOccurence Condition
+
+#### Farouts
+```{r AnovaResp7, warning=FALSE}
+anova_RespDistLC <- aov(RT_ifo~Validity+Saliency+ResponseType+LastOcc_Condition+Distance+
+                          Validity*Saliency+
+                         Validity*LastOcc_Condition+
+                         Saliency*LastOcc_Condition+
+                        ResponseType*Validity*LastOcc_Condition+
+                         Saliency*Validity*LastOcc_Condition+
+                       Saliency*ResponseType+
+                       ResponseType*Saliency*Validity+
+                         ResponseType*Saliency*Validity*LastOcc_Condition,
+                     data=Exp1agg_RespDistLC_fo)
+pander(summary(anova_RespLC),style="rmarkdown",caption = "ANOVA Results of RT x Validity, Saliency,LastOccurence condition,Distance and responseType")
+```
+
+#### Outliers
+```{r AnovaResp8, warning=FALSE}
+anova_RespDistLC_o <- aov(RT_io~Validity+Saliency+ResponseType+LastOcc_Condition+Distance+
+                          Validity*Saliency+
+                         Validity*LastOcc_Condition+
+                         Saliency*LastOcc_Condition+
+                        ResponseType*Validity*LastOcc_Condition+
+                         Saliency*Validity*LastOcc_Condition+
+                       Saliency*ResponseType+
+                       ResponseType*Saliency*Validity+
+                         ResponseType*Saliency*Validity*LastOcc_Condition,
+                     data=Exp1agg_RespDistLC_o)
+pander(summary(anova_RespDistLC_o),style="rmarkdown",caption = "ANOVA Results of RT(Outliers) x Validity, Saliency,LastOccurence condition,Distance and responseType")
+```
+
+
