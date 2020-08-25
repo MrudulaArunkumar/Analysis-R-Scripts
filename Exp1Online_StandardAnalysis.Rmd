@@ -302,7 +302,6 @@ aggmeanER <- ddply(aggER, .(Validity,Saliency), summarise, ErrorMean = mean(Erro
 
 #using aov (matching with ez)
 standard_anova_fo <- aov(RT_ifo~(Val*Sal)+ Error(participant/(Val*Sal)), data = Exp1agg_Standard_fo)
-summary(standard_anova_fo)
 
 # panderOptions('table.split.table',300)
 pander(standard_anova_fo, style = 'multiline', caption = "Standard ANOVA table: RT(farouts) as a function of Saliency and Validity", split.table = Inf, missing = NA)
