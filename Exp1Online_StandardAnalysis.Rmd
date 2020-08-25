@@ -1,13 +1,14 @@
 ---
 title: "Exp1 Online- StandardAnalysis"
 author: "Mrudula & Carina"
-date: "24/08/2020"
+date: "25/08/2020"
 output: html_document
 ---
 
 ### Fundamentals 
 
 The datafiles from 60 participants were collected from pavlovia via prolific. All the data files have been combined together to one datafile. This datafile is loaded along with the necessary libraries needed for the data preparation/cleaning and analysis.
+
 ```{r libraryload, include=FALSE, message=FALSE, warning = FALSE}
 #Recording the session of R in place at the time
 sessionInfo()
@@ -15,7 +16,6 @@ sessionInfo()
 library(tidyverse) #for data prep
 library(plyr)#also for data prep
 library(ez) #anova stats
-library(schoRsch) 
 library(knitr)#for markdown
 library(pander)#for markdown tables 
 library(here) #useful to set up working directory
@@ -45,6 +45,7 @@ attach(Exp1data_OL)
 
 
 ```
+
 ### Cleaning the datafile
 
 To arrive at a clean datafile, certain columns are removed such as columns containing details with instructions, pauses attention Check, etc. 
@@ -58,8 +59,7 @@ Exp1data_OL <- Exp1data_OL %>%
          -id, -session, -researcher, -InstRep.thisRepN,-InstRep.thisIndex,-InstRep.thisN, -InstRep.thisTrialN,
          -PracRepeat.thisRepN,-PracRepeat.thisIndex,-PracRepeat.thisN, -PracRepeat.thisTrialN,
          -prctrials.thisIndex,-prctrials.thisRepN,-prctrials.thisTrialN,-prctrials.ran,
-         -firstlearntrials.thisN,-firstlearntrials.thisRepN,-firstlearntrials.thisTrialN,-firstlearntrials.ran,-firstlearntrials.thisIndex,
-         -afterpause.keys,-blocks.ran,-InstRep.ran,-consentkey.keys,-consentkey.rt,-beginexp.keys,-beginexp.rt,-checkresp.corr,-checkresp.keys,-checkresp.rt,-Attention.thisN,-Question,-Solution,-gotoPrac.keys,-gotoPrac.rt,-PracRepeat.ran,-prctrials.thisN,-afterpause.rt,-blocks.thisN, -todebrief.rt, -todebrief.keys, -ExpExit.keys, -ExpExit.rt
+         -firstlearntrials.thisN,-firstlearntrials.thisRepN,-firstlearntrials.thisTrialN,-firstlearntrials.ran,-firstlearntrials.thisIndex,-blocks.thisIndex,-afterpause.keys,-blocks.ran,-InstRep.ran,-consentkey.keys,-consentkey.rt,-beginexp.keys,-beginexp.rt,-checkresp.corr,-checkresp.keys,-checkresp.rt,-Attention.thisN,-Question,-Solution,-gotoPrac.keys,-gotoPrac.rt,-PracRepeat.ran,-prctrials.thisN,-afterpause.rt,-blocks.thisN, -todebrief.rt, -todebrief.keys, -ExpExit.keys, -ExpExit.rt
          )
 #removing the first column named x
 Exp1data_OL <- subset(Exp1data_OL, select = -c(X))
@@ -73,8 +73,10 @@ Exp1data_OL <-Exp1data_OL %>%
 The column containing the RTs is split because some rows contain more than one RT because the psychopy is designed in such a way that only upon the correct answer the next trial is presented. So in trials that are incorrect there will be more than one RT value registered. However we are only interested in the first response, hence the RT column is split to contain the first response time in a separate column. RTs should also be changed to double as they are represented as strings initially (with the presence of commas and square brackets) 
 
 These RT values are further edited:
-* Psychopy originally evaluated the RTs from 400ms irrespective of the PreTrial Display time
-* Hence, to the RT value, 400ms is added and later subtracted by the PreTrialDisplay time(also includes fixation cross) (in ms) for each trial
+
+- Psychopy originally evaluated the RTs from 400ms irrespective of the PreTrial Display time
+
+- Hence, to the RT value, 400ms is added and later subtracted by the PreTrialDisplay time(also includes fixation cross) (in ms) for each trial
 
 ```{r RTprep, include=FALSE }
 #Splitting up the RT column to be able to evaluate the RTs
@@ -100,6 +102,7 @@ table(Exp1data_OL$PreTargetDisplayTime)
 
 #adjusting RT
 Exp1data_OL$RT_Trials <- 400+Exp1data_OL$RT_Trials #adding the 400ms that was coded in psychopy after which RT is evaluated
+
 #Removing the preinterval display duration that also includes fixation duration
 Exp1data_OL$RT_Trials <- Exp1data_OL$RT_Trials - Exp1data_OL$PreTargetDisplayTime
 
@@ -110,15 +113,17 @@ Exp1data_OL <- Exp1data_OL%>%group_by(participant)%>%fill(Screen_bg,.direction =
 Exp1data_OL <- Exp1data_OL %>% group_by(participant)%>%fill(blocks.thisRepN,.direction = "up")
 
 Exp1data_OL <- rename(Exp1data_OL, c("blocks.thisRepN" = "BlockCount"))
-
-Exp1data_OL <- Exp1data_OL %>% select(-blocks.ran,-blocks.thisIndex)
+Exp1data_OL$BlockCount[Exp1data_OL$BlockCount == 0] <- "FirstBlock"
+Exp1data_OL$BlockCount[Exp1data_OL$BlockCount == 1] <- "SecondBlock"
+Exp1data_OL$BlockCount[Exp1data_OL$BlockCount == 2] <- "ThirdBlock"
 ```
 
 ##### Data Preparation
-Since the data is now cleaned to an extent, next steps involves preparing the df
+Since the data is now cleaned to an extent, the next steps involve preparing the df
+
   + Clearly identify the ACC and RT columns
   + New column with error rate
-  + Removing the practice trials and learn trials
+  + Removing the **practice trials and learn trials**
   + Remove AttentionCheck 
 
 ```{r dataprep, warning=FALSE, include=FALSE}
@@ -131,7 +136,7 @@ Exp1data_OL$ErrorRate <- 1 - Exp1data_OL$ACC_Trials
 Exp1data_OL <- Exp1data_OL[!grepl("Practice","ExpfirstLearn", Exp1data_OL$Block),]
 Exp1data_OL <- Exp1data_OL[!grepl("learn", Exp1data_OL$Condition),]
 
-#removing other columsn related to practice
+#removing other columns related to practice
 Exp1data_OL <- Exp1data_OL %>%
   select(-pracend.keys, -pracend.rt, -Prac_start.rt, -PracRepeat.ran, -PracRepeat.thisIndex, -PracRepeat.thisN, -PracRepeat.thisRepN, -PracRepeat.thisTrialN, -Prac_start.keys, -ResponseKey_p.corr,-ResponseKey_p.keys, -ResponseKey_p.rt)
 
@@ -167,6 +172,7 @@ pander((table(Exp1data_OL$Screen_bg)/240), style = "rmarkdown", caption = "Scree
 ggplot(Exp1data_OL, aes(x=Age, y = RT_Trials))+
   geom_point(colour=Exp1data_OL$Age)+
   ylab("Reaction Time")+
+  theme_minimal()+
   ggtitle("Reaction Time across each Age")
 
 #Mean RT
@@ -183,7 +189,9 @@ detach(Exp1data_OL)
 
 
 ### Removing Outliers and Farouts
+
 Outliers and Farouts are identified at the individual level and the respective RT columns are created : One for outliers (RT_io) and one for Farouts (RT_ifo)
+
 ```{r FaroutsOutliers, warning=FALSE, echo=FALSE }
 #removing RT values for the incorrect trials
 Exp1data_OL$RT_Trials[Exp1data_OL$ACC_Trials==0] <- NA
@@ -229,6 +237,7 @@ table(Exp1data_OL$Condition, Exp1data_OL$Saliency)
 
 
 #### **Aggregate means for Standard Analysis : RT with Validity and Saliency as factors** 
+
 Aggregate means for the Standard Analysis are computed along with the average of that which is used for plotting
 ```{r Aggregate, include=FALSE, warning=FALSE}
 ###farouts
@@ -239,14 +248,17 @@ Exp1agg_Standard_fo$participant <- as.factor(Exp1agg_Standard_fo$participant)
 Exp1agg_Standard_fo$Saliency <- as.factor(Exp1agg_Standard_fo$Saliency)
 Exp1agg_Standard_fo$Validity <- as.factor(Exp1agg_Standard_fo$Validity)
 
+#renaming columns
+Exp1agg_Standard_fo <- Exp1agg_Standard_fo %>%
+  dplyr::rename("Val" = "Validity",
+                "Sal" = "Saliency")
 
 #aggregate means of farouts
-aggmeanSV_fo <- ezStats(data = Exp1agg_Standard_fo,
-                     dv = RT_ifo,
-                     wid = participant,
-                     within = .(Saliency, Validity))
+
+aggmeanSV_fo <- ddply(Exp1agg_Standard_fo, .(Val,Sal), summarize, RTmean=mean(RT_ifo), SD = sd(RT_ifo))
 
 ##OUTLIERS
+
 Exp1agg_Standard_o <- aggregate(data = Exp1data_OL, RT_io~participant+Saliency+Validity, mean)
 
 #Converting to factors for ANOVA
@@ -254,31 +266,31 @@ Exp1agg_Standard_o$participant <- as.factor(Exp1agg_Standard_o$participant)
 Exp1agg_Standard_o$Saliency <- as.factor(Exp1agg_Standard_o$Saliency)
 Exp1agg_Standard_o$Validity <- as.factor(Exp1agg_Standard_o$Validity)
 
+#renaming columns
+Exp1agg_Standard_o <- Exp1agg_Standard_o %>%
+  dplyr::rename("Val" = "Validity",
+         "Sal" = "Saliency")
 
 #aggregate means of farouts
-aggmeanSV_o <- ezStats(data = Exp1agg_Standard_o,
-                     dv = RT_io,
-                     wid = participant,
-                     within = .(Saliency, Validity))
+aggmeanSV_o <- ddply(Exp1agg_Standard_o, .(Val,Sal), summarize,
+                     RTmean = mean(RT_io), SD = sd(RT_io))
 
 ```
 
 #### **Aggregate means for Standard Analysis : ErrorRate with Validity and Saliency as factors** 
 Aggregate ErrorRate was also calculated across each participant
+
 ```{r Aggregate Error Rate, include=FALSE, warning=FALSE}
 aggER <- aggregate(data=Exp1data_OL, ErrorRate~participant+Validity+Saliency, mean)
 
+aggER$ErrorRate <- aggER$ErrorRate*100
 #Converting to factors for ANOVA
 aggER$participant <- as.factor(aggER$participant)
 aggER$Validity <- as.factor(aggER$Validity)
 aggER$Saliency <- as.factor(aggER$Saliency)
 
 #mean aggregate for plots
-aggmeanER <- ezStats(data = aggER,
-                     dv = ErrorRate,
-                     wid = participant,
-                     within = .(Saliency, Validity))
-
+aggmeanER <- ddply(aggER, .(Validity,Saliency), summarise, ErrorMean = mean(ErrorRate), SD = sd(ErrorRate))
 ```
 
 
@@ -288,42 +300,24 @@ aggmeanER <- ezStats(data = aggER,
 ### 1. Standard Analysis ANOVA with plot: FAROUTS removed
 ```{r Stdanalysis, warning = FALSE}
 
-#using ezPackage
-standard_anova_fo <- ezANOVA(Exp1agg_Standard_fo,
-                    dv = RT_ifo,
-                    wid = participant,
-                    within = .(Saliency,Validity),
-                    detailed = TRUE,
-                    return_aov = TRUE)
-#anova_out(standard_anova_fo)
+#using aov (matching with ez)
+standard_anova_fo <- aov(RT_ifo~(Val*Sal)+ Error(participant/(Val*Sal)), data = Exp1agg_Standard_fo)
+summary(standard_anova_fo)
 
-#ANOVA results Table
-panderOptions('table.split.table',300)
-pander(standard_anova_fo, style = 'rmarkdown', caption = "Standard ANOVA table: RT(farouts) as a function of Saliency and Validity", split.table = Inf)
-
-pander(summary(aov(RT_ifo~Validity+Saliency+Validity*Saliency, data = Exp1agg_Standard_fo)),
-       style = "rmarkdown", caption = "ANOVA results using aov function")
-
-#plot
-# #ezPlot(Exp1agg_Standard_fo,
-#                     dv = RT_ifo,
-#                     wid = participant,
-#                     within = .(Saliency,Validity),
-#                     split=Validity,
-#                     x = Saliency,
-#                     do_bars = F)
-
+# panderOptions('table.split.table',300)
+pander(standard_anova_fo, style = 'multiline', caption = "Standard ANOVA table: RT(farouts) as a function of Saliency and Validity", split.table = Inf, missing = NA)
 
 ```
+
 **Plot showing the mean RT Trials with the factors of Validity and Saliency**
 
 ```{r PlotsafterANOVA, warning = FALSE, echo = FALSE}
 #Plot for farouts
 
-ggplot(aggmeanSV_fo, aes(x=Validity, color=Saliency, y=Mean))+
-  geom_line(aes(group=Saliency))+
+ggplot(aggmeanSV_fo, aes(x=Sal, color=Val, y=RTmean))+
+  geom_line(aes(group=Val))+
   geom_point()+
-  labs(x="Saliency", y = "ReactionTime")+
+  labs(x="Saliency", y = "ReactionTime", color = "Validity")+
   theme_classic()+
   ylim(550,600)+
   ggtitle("Standard Analysis: RT(farouts) as function of saliency and validity")+
@@ -339,26 +333,10 @@ ggplot(aggmeanSV_fo, aes(x=Validity, color=Saliency, y=Mean))+
 
 ```{r ANOVa outliers, warning=FALSE}
 #outliers
-standard_anova_o <- ezANOVA(data = Exp1agg_Standard_o,
-                    dv = RT_io,
-                    wid = participant,
-                    within = .(Saliency,Validity),
-                    detailed = TRUE)
-#anova_out(standard_anova_o)
+standard_anova_o <- aov(RT_io~(Val*Sal)+Error(participant/(Val*Sal)), data = Exp1agg_Standard_o)
 
 panderOptions('table.split.table',300)
 pander(standard_anova_o, style = 'rmarkdown', caption = "Standard ANOVA table: RT(outliers) as a function of Saliency and Validity", split.table = Inf)
-
-pander(summary(aov(RT_io~1+Validity+Saliency+Validity*Saliency, data = Exp1agg_Standard_o)),
-       style = "rmarkdown", caption = "Results using aov function")
-# 
-# ezPlot(Exp1agg_Standard_o,
-#                     dv = RT_io,
-#                     wid = participant,
-#                     within = .(Saliency,Validity),
-#                     split=Validity,
-#                     x = Saliency,
-#                     do_bars = F)
 
 ```
 
@@ -368,10 +346,10 @@ pander(summary(aov(RT_io~1+Validity+Saliency+Validity*Saliency, data = Exp1agg_S
 ```{r OutlierPlot, echo=FALSE}
 #plot for RT wo outliers
 
-ggplot(aggmeanSV_o, aes(x=Saliency, color=Validity, y=Mean))+
-  geom_line(aes(group=Validity))+
+ggplot(aggmeanSV_o, aes(x=Sal, color=Val, y=RTmean))+
+  geom_line(aes(group=Val))+
   geom_point()+
-  labs(x="Saliency", y = "ReactionTime")+
+  labs(x="Saliency", y = "ReactionTime", color = "Validity")+
   theme_classic()+
   ylim(550,600)+
   ggtitle("Standard Analysis: RT(Outliers) as function of saliency and validity")+
@@ -385,31 +363,30 @@ ggplot(aggmeanSV_o, aes(x=Saliency, color=Validity, y=Mean))+
 
 ```{r ANOVA Errorrate, warning=FALSE, echo=FALSE}
 
-anova_ER <- ezANOVA(data = aggER,
-                    dv = ErrorRate,
-                    wid = participant,
-                    within = .(Saliency,Validity),
-                    detailed = TRUE,
-                    return_aov = TRUE)
-#anova_out(anova_ER)
+anova_ER <- aov(data=aggER,ErrorRate~(Validity*Saliency)+Error(participant/(Validity*Saliency)))
+
 
 panderOptions('table.split.table',300)
-pander(anova_ER, style = 'rmarkdown', caption = "Standard ANOVA table: Error Rates as a function of Saliency and Validity", split.table = Inf)
+pander::pander(summary(anova_ER), style = 'rmarkdown', caption = "Standard ANOVA table: Error Rates as a function of Saliency and Validity")
 
-pander(summary(aov(ErrorRate~1+Validity+Saliency+Validity*Saliency, data = aggER)),
-       style = "rmarkdown", caption = "Error rate Results using aov function")
-
-# ezPlot(aggER,
-#                     dv = ErrorRate,
-#                     wid = participant,
-#                     within = .(Saliency,Validity),
-#                     split=Validity,
-#                     x = Saliency,
-#                     do_bars = F)
 
 
 ```
+#### Plot showing the Error rate for valid and Salient Trials
 
+```{r ERPlot, echo=FALSE}
+#plot for ER 
+ggplot(aggmeanER, aes(x=Saliency, color=Validity, y=ErrorMean))+
+  geom_line(aes(group=Validity))+
+  geom_point()+
+  labs(x="Saliency", y = "Error Rate(in %)")+
+  theme_classic()+
+  ylim(0,15)+
+  ggtitle("Standard Analysis: Error Rate as function of saliency and validity")+
+  theme(plot.title = element_text(hjust = 0.5))+
+  theme(legend.title = element_text(size=12), legend.text= element_text(size=10))+
+  theme(axis.title = element_text(size=12),axis.text = element_text(size=10))
+```
 
 ## 4. Block analysis
 
@@ -428,12 +405,13 @@ aggBlock_fo$Saliency <- as.factor(aggBlock_fo$Saliency)
 aggBlock_fo$Validity <- as.factor(aggBlock_fo$Validity)
 aggBlock_fo$BlockCount <- as.factor(aggBlock_fo$BlockCount)
 
-anova_Block_fo <- ezANOVA(data = aggBlock_fo,
-                    dv = RT_ifo,
-                    wid = participant,
-                    within = .(Saliency,Validity,BlockCount),
-                    detailed = TRUE,
-                    return_aov = TRUE)
+aggBlock_fo <- aggBlock_fo %>%
+  dplyr::rename("Sal" = "Saliency",
+                "Val" = "Validity",
+  )
+
+anova_Block_fo <- aov(data = aggBlock_fo, RT_ifo~(Val*Sal*BlockCount)+Error(participant/(Val*Sal*BlockCount)))
+
 #anova_out(anova_Block_fo)
 
 panderOptions('table.split.table',300)
@@ -473,13 +451,13 @@ aggBlock_o$Saliency <- as.factor(aggBlock_o$Saliency)
 aggBlock_o$Validity <- as.factor(aggBlock_o$Validity)
 aggBlock_o$BlockCount <- as.factor(aggBlock_o$BlockCount)
 
-anova_Block_o <- ezANOVA(data = aggBlock_o,
-                    dv = RT_io,
-                    wid = participant,
-                    within = .(Saliency,Validity,BlockCount),
-                    detailed = TRUE,
-                    return_aov = TRUE)
-#anova_out(anova_Block_o)
+aggBlock_o <- aggBlock_o %>%
+  dplyr::rename("Sal" = "Saliency",
+                "Val" = "Validity",
+  )
+
+anova_Block_o <- aov(data = aggBlock_o, RT_io~(Val*Sal*BlockCount)+Error(participant/(Val*Sal*BlockCount)))
+
 
 panderOptions('table.split.table',300)
 pander(anova_Block_o, style = 'rmarkdown', caption = "Standard ANOVA table: RT(outliers removed) as a function of Saliency and Validity and Block", split.table = Inf)
