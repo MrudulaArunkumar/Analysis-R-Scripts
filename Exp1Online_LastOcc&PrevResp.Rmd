@@ -32,15 +32,17 @@ rm(list=ls())
 #Exp1data_OL <- read.csv("C:/FSU Jena_PhD/Exp1/Data/Exp1-Prolific/Exp1data_online_fullset.csv")
 
 #Office set up Mrudula
-setwd("D:/PhD/Exp1-Overshadowing/Analysis/R Scripts")
+#setwd("D:/PhD/Exp1-Overshadowing/Analysis/R Scripts")
 set_here()
 
 #Office setup Carina
 #setwd("~/Daten/1 BRAC-FOR/overshadowing/Exp 1 Psychopy Mrudula/Analyses")
 
-#load from office
-Exp1data_OL <- read.csv("D:/PhD/Exp1-Overshadowing/Data/Exp1data_online_fullset.csv")
+#load from homeoffice
+Exp1data_OL <- read.csv("C:/FSU Jena_PhD/Exp1/Data/Exp1-Prolific/Exp1data_online_fullset.csv")
 
+#load from office
+#Exp1data_OL <- read.csv("D:/PhD/Exp1-Overshadowing/Data/Exp1data_online_fullset.csv")
 #adding the dataframe to the search path to not repeat it everytime to select or name a column
 attach(Exp1data_OL)
 #remember to deattach() when you are done with it
@@ -117,6 +119,7 @@ names(Exp1data_OL)[names(Exp1data_OL)=="blocks.thisRepN"] <- "BlockCount"
 
 ### Data Preparation
 Since the data is now cleaned to an extent, next steps involves preparing the df
+
 *Clearly identify the ACC and RT columns
 *New column with error rate
 *Removing the practice trials - Keep the learn trials for previous occurence and last response analysis
@@ -135,7 +138,7 @@ Exp1data_OL <- Exp1data_OL[!grepl("Practice", Exp1data_OL$Block),]
 
 #removing other columsn related to practice
 Exp1data_OL <- Exp1data_OL %>%
-  select(-pracend.keys, -pracend.rt, -Prac_start.rt, -PracRepeat.ran, -PracRepeat.thisIndex, -PracRepeat.thisN, -PracRepeat.thisRepN, -PracRepeat.thisTrialN, -Prac_start.keys, -ResponseKey_p.corr,-ResponseKey_p.keys, -ResponseKey_p.rt)
+  select(-pracend.keys, -pracend.rt, -Prac_start.rt, -Prac_start.keys, -ResponseKey_p.corr,-ResponseKey_p.keys, -ResponseKey_p.rt)
 
 #get newly created vars to start of dataset
 Exp1data_OL <-Exp1data_OL %>%
@@ -437,8 +440,6 @@ Exp1agg_Resp_fo <- aggregate(data = Exp1data_OL, RT_ifo~participant+Saliency+Val
 
 
 
-#pander(table(Exp1agg_fo$Distance, Exp1agg_fo$ResponseType),style = 'rmarkdown', caption = "Distance x ResponseType")
-
 #Converting to factors for ANOVA
 Exp1agg_Resp_fo$participant <- as.factor(Exp1agg_Resp_fo$participant)
 Exp1agg_Resp_fo$Saliency <- as.factor(Exp1agg_Resp_fo$Saliency)
@@ -453,8 +454,6 @@ Exp1agg_Resp_fo <- Exp1agg_Resp_fo %>%
 
 ###outliers
 Exp1agg_Resp_o <- aggregate(data = Exp1data_OL, RT_io~participant+Saliency+Validity+ResponseType, mean)
-
-
 
 
 #Converting to factors for ANOVA
@@ -480,9 +479,6 @@ Creating a dataframe with the Mean RT across the factors of saliency and validit
 #farouts
 Exp1agg_RespLC_fo <- aggregate(data = Exp1data_OL, RT_ifo~participant+Saliency+Validity+ResponseType+LastOcc_Condition, mean)
 
-
-
-#pander(table(Exp1agg_fo$Distance, Exp1agg_fo$ResponseType),style = 'rmarkdown', caption = "Distance x ResponseType")
 
 #Converting to factors for ANOVA
 Exp1agg_RespLC_fo$participant <- as.factor(Exp1agg_RespLC_fo$participant)
@@ -568,6 +564,7 @@ Exp1agg_RespDistLC_o <- Exp1agg_RespDistLC_o %>%
 ### 1. ANOVA with RT and the factors of Validity, Saliency and ResponseType
 #### Farouts
 ```{r AnovaResp1, warning=FALSE}
+
 anova_Resp <- aov(data=Exp1agg_Resp_fo, RT_ifo~(RespType*Sal*Val)+Error(participant/(Val*Sal*RespType)))
 
 pander(summary(anova_Resp),style="rmarkdown",caption = "ANOVA Results of RT(Farouts) x Validity, Saliency and responseType")
@@ -591,7 +588,8 @@ ggplot(aggRespSV, aes(RespType,RTmean,color = Val)) +
 
 ```{r AnovaResp2, warning=FALSE}
 anova_Resp_o <- aov(RT_io~(RespType*Sal*Val)+Error(participant/(RespType*Sal*Val)), data=Exp1agg_Resp_o)
-pander(summary(anova_Resp_o),style="rmarkdown",caption = "ANOVA Results of RT(Farouts) x Validity, Saliency and responseType")
+table(Exp1agg_Resp_o$Sal)
+pander(summary(anova_Resp_o),style="rmarkdown",caption = "ANOVA Results of RT(Outliers) x Validity, Saliency and responseType")
 ```
 
 
@@ -613,18 +611,8 @@ ggplot(aggRespSV_o, aes(RespType,RTmean,color = Val)) +
 
 #### Farouts
 ```{r AnovaResp3, warning=FALSE}
-anova_DistResp <- aov(RT_ifo~Validity+Saliency+ResponseType+Distance+
-                       ResponseType*Validity+
-                         ResponseType*Distance+
-                       Validity*Saliency+
-                         Validity*Distance+
-                         Saliency*Distance+
-                        ResponseType*Validity*Distance+
-                         Saliency*Validity*Distance+
-                       Saliency*ResponseType+
-                       ResponseType*Saliency*Validity+
-                         ResponseType*Saliency*Validity*Distance,
-                     data=Exp1agg_fo)
+anova_DistResp <- aov(RT_ifo~(RespType*Sal*Val*Dist)+Error(participant|(RespType*Sal*Val*Dist)),data=Exp1agg_fo)
+which(Exp1agg_fo == 0)
 pander(summary(anova_DistResp),style="rmarkdown",caption = "ANOVA Results of RT x Validity, Saliency,Distance and responseType")
 ```
 
@@ -646,17 +634,7 @@ ggplot(aggDistRespSV, aes(ResponseType,RTmean,color = Validity)) +
 #### outliers
 
 ```{r AnovaResp4, warning=FALSE}
-anova_DistResp_o <- aov(RT_io~Validity+Saliency+ResponseType+Distance+
-                       ResponseType*Validity+
-                         ResponseType*Distance+
-                       Validity*Saliency+
-                         Validity*Distance+
-                         Saliency*Distance+
-                        ResponseType*Validity*Distance+
-                         Saliency*Validity*Distance+
-                       Saliency*ResponseType+
-                       ResponseType*Saliency*Validity+
-                         ResponseType*Saliency*Validity*Distance,
+anova_DistResp_o <- aov(RT_io~(Val*Sal*RespType*Dist)+Error(participant|(RespType*Sal*Val*Dist)),
                      data=Exp1agg_o)
 pander(summary(anova_DistResp_o),style="rmarkdown",caption = "ANOVA Results of RT(OUtliers) x Validity, Saliency,Distance and responseType")
 
