@@ -1,7 +1,7 @@
 ---
 title: 'Exp1 Online: LastOccurence&PreviousResponse Analysis'
 author: "Mrudula & Carina"
-date: "25/8/2020"
+date: "26/8/2020"
 output: html_document
 ---
 
@@ -15,8 +15,10 @@ sessionInfo()
 library(tidyverse) #for data prep
 library(plyr)#also for data prep
 library(ez) #anova stats
-library(schoRsch) 
-library(nlme) #repeated measures anova
+library(schoRsch)
+library(car) 
+library(lme4)
+library(nlme)
 library(data.table)#for lag
 library(knitr)#for markdown
 library(pander)#for markdown tables 
@@ -33,16 +35,17 @@ rm(list=ls())
 
 #Office set up Mrudula
 #setwd("D:/PhD/Exp1-Overshadowing/Analysis/R Scripts")
-set_here()
+#This command will automatically set the wd to be one where the file is
+# set_here()
 
 #Office setup Carina
 #setwd("~/Daten/1 BRAC-FOR/overshadowing/Exp 1 Psychopy Mrudula/Analyses")
 
 #load from homeoffice
-Exp1data_OL <- read.csv("C:/FSU Jena_PhD/Exp1/Data/Exp1-Prolific/Exp1data_online_fullset.csv")
+# Exp1data_OL <- read.csv("C:/FSU Jena_PhD/Exp1/Data/Exp1-Prolific/Exp1data_online_fullset.csv")
 
 #load from office
-#Exp1data_OL <- read.csv("D:/PhD/Exp1-Overshadowing/Data/Exp1data_online_fullset.csv")
+Exp1data_OL <- read.csv("D:/PhD/Exp1-Overshadowing/Data/Exp1data_online_fullset.csv")
 #adding the dataframe to the search path to not repeat it everytime to select or name a column
 attach(Exp1data_OL)
 #remember to deattach() when you are done with it
@@ -106,6 +109,7 @@ table(Exp1data_OL$PreTargetDisplayTime)
 
 #adjusting RT
 Exp1data_OL$RT_Trials <- 400+Exp1data_OL$RT_Trials #adding the 400ms that was coded in psychopy after which RT is evaluated
+
 #Removing the preinterval display duration that also includes fixation duration
 Exp1data_OL$RT_Trials <- Exp1data_OL$RT_Trials - Exp1data_OL$PreTargetDisplayTime
 
@@ -180,6 +184,7 @@ pander(round(table(Exp1data_OL$ACC_Trials)/nrow(Exp1data_OL)*100, digits = 3), s
 
 ### Removing Outliers and Farouts
 Outliers and Farouts are identified at the individual level and the respective RT columns are created : One for outliers (RT_io) and one for Farouts (RT_ifo)
+
 ```{r FaroutsOutliers, warning=FALSE, echo=FALSE }
 #removing RT values for the incorrect trials
 Exp1data_OL$RT_Trials[Exp1data_OL$ACC_Trials==0] <- NA
@@ -207,7 +212,7 @@ pander(summary(Exp1data_OL$RT_ifo), style = 'rmarkdown', caption = "Summary of R
 pander(summary(Exp1data_OL$RT_io), style = 'rmarkdown', caption = "Summary of RT after removing Outliers")
 
 ```
-There are more NAs due to the fact that the learn trials are still a part of the dataset and have not been removed yet. 
+There are more NAs due to the fact that the learn trials are still part of the dataset and have not been removed yet. 
 
 ## Computing Previous Occurence
 
@@ -240,8 +245,6 @@ Here is the number of the trials where the last occurence was the immediately pr
 ```{r table, results='asis', echo=FALSE}
 #The number of immediate previous occurences
 pander(table(Exp1data_OL$Distance), style = 'rmarkdown', caption = "Table showing the number of immediate previous occurence")
-
-
 
 ```
 This is continued further by adding values for previous occurence that were not the immediately preceding  (eg. n-2, n-3, n-4....)
@@ -387,11 +390,86 @@ Exp1data_OL <- Exp1data_OL %>%
 ## STATISTICAL ANALYSIS
 All the learning trials are removed, since only the test trials are used for analysis
 
+```{r}
+
+agg <- aggregate(data = Exp1data_OL, RT_ifo~participant+Condition+ResponseType, mean)
+
+canova <- ezANOVA(data = agg,
+                  dv = RT_ifo,
+                  wid = participant,
+                  within = .(ResponseType,Condition),
+                  detailed = TRUE)
+anova_out(canova)
+
+ezPlot(data = agg,
+       dv = RT_ifo,
+       wid = participant,
+       within = .(ResponseType,Condition),
+       x=ResponseType, col = Condition, do_bars = FALSE)+
+  ylim(550,600)
+
+agg1 <- aggregate(data = Exp1data_OL, RT_ifo~participant+Condition+ResponseType+Distance, mean)
+
+m1 <- lmer(RT_ifo~Condition*Distance*ResponseType + (1|participant), data = agg1)
+
+Anova(m1, test.statistic = "F") ## Dist:Resptype , p=0.04
+
+ggplot(agg1, aes(ResponseType, y = RT_ifo, color=ResponseType)) +
+  geom_violin()+
+  geom_point()+
+  labs(x="Response Type", y = "ReactionTime")+
+  ylim(500,750)+
+  facet_grid(cols = vars(Distance), rows = vars(Condition))+
+  theme_classic()
+
+```
+
+
 ```{r include=FALSE}
 Exp1data_OL <- Exp1data_OL[!grepl("learn", Exp1data_OL$Condition),]
 ```
 
-#### **1. Aggregate the means with the factors ResponseType, Distance, Saliency, Validity** 
+#### **1. Aggregate the means with the factors ResponseType, Saliency, Validity** 
+Creating a dataframe with the Mean RT across the factors of saliency and validity along with ResponseType. Separately for farouts and outliers so that it can be distinguished during analysis
+```{r aggregateResp2, warning=FALSE, echo=FALSE}
+#farouts
+Exp1agg_Resp_fo <- aggregate(data = Exp1data_OL, RT_ifo~participant+Saliency+Validity+ResponseType, mean)
+
+
+
+#Converting to factors for ANOVA
+Exp1agg_Resp_fo$participant <- as.factor(Exp1agg_Resp_fo$participant)
+Exp1agg_Resp_fo$Saliency <- as.factor(Exp1agg_Resp_fo$Saliency)
+Exp1agg_Resp_fo$Validity <- as.factor(Exp1agg_Resp_fo$Validity)
+Exp1agg_Resp_fo$ResponseType <- as.factor(Exp1agg_Resp_fo$ResponseType)
+
+Exp1agg_Resp_fo <- Exp1agg_Resp_fo %>%
+  dplyr::rename("Val" = "Validity",
+                "Sal" = "Saliency",
+                "RespType" = "ResponseType",
+                )
+
+###outliers
+Exp1agg_Resp_o <- aggregate(data = Exp1data_OL, RT_io~participant+Saliency+Validity+ResponseType, mean)
+
+
+#Converting to factors for ANOVA
+Exp1agg_Resp_o$participant <- as.factor(Exp1agg_Resp_o$participant)
+Exp1agg_Resp_o$Saliency <- as.factor(Exp1agg_Resp_o$Saliency)
+Exp1agg_Resp_o$Validity <- as.factor(Exp1agg_Resp_o$Validity)
+Exp1agg_Resp_o$ResponseType <- as.factor(Exp1agg_Resp_o$ResponseType)
+
+Exp1agg_Resp_o <- Exp1agg_Resp_o %>%
+  dplyr::rename("Val" = "Validity",
+                "Sal" = "Saliency",
+                "RespType" = "ResponseType",
+                )
+
+pander(table(Exp1agg_Resp_fo$RespType,Exp1agg_Resp_fo$participant), style = "rmarkdown", caption = "Factorial combination of Distance and Response")
+
+```
+
+#### **2. Aggregate the means with the factors ResponseType, Distance, Saliency, Validity** 
 Creating a dataframe with the Mean RT across the factors of saliency and validity along with ResponseType and Distance. Separately for farouts and outliers so that it can be distinguished during analysis
 
 ```{r aggregate1, warning=FALSE, echo=FALSE}
@@ -429,46 +507,9 @@ Exp1agg_o <- Exp1agg_o %>%
                 "RespType" = "ResponseType",
                 "Dist" = "Distance")
 
+pander(table(Exp1agg_fo$RespType,Exp1agg_fo$Dist), style = "rmarkdown", caption = "Factorial combination of Distance and Response(Farouts)")
 
-```
-
-#### **2. Aggregate the means with the factors ResponseType, Saliency, Validity** 
-Creating a dataframe with the Mean RT across the factors of saliency and validity along with ResponseType. Separately for farouts and outliers so that it can be distinguished during analysis
-```{r aggregateResp2, warning=FALSE, echo=FALSE}
-#farouts
-Exp1agg_Resp_fo <- aggregate(data = Exp1data_OL, RT_ifo~participant+Saliency+Validity+ResponseType, mean)
-
-
-
-#Converting to factors for ANOVA
-Exp1agg_Resp_fo$participant <- as.factor(Exp1agg_Resp_fo$participant)
-Exp1agg_Resp_fo$Saliency <- as.factor(Exp1agg_Resp_fo$Saliency)
-Exp1agg_Resp_fo$Validity <- as.factor(Exp1agg_Resp_fo$Validity)
-Exp1agg_Resp_fo$ResponseType <- as.factor(Exp1agg_Resp_fo$ResponseType)
-
-Exp1agg_Resp_fo <- Exp1agg_Resp_fo %>%
-  dplyr::rename("Val" = "Validity",
-                "Sal" = "Saliency",
-                "RespType" = "ResponseType",
-                )
-
-###outliers
-Exp1agg_Resp_o <- aggregate(data = Exp1data_OL, RT_io~participant+Saliency+Validity+ResponseType, mean)
-
-
-#Converting to factors for ANOVA
-Exp1agg_Resp_o$participant <- as.factor(Exp1agg_Resp_o$participant)
-Exp1agg_Resp_o$Saliency <- as.factor(Exp1agg_Resp_o$Saliency)
-Exp1agg_Resp_o$Validity <- as.factor(Exp1agg_Resp_o$Validity)
-Exp1agg_Resp_o$ResponseType <- as.factor(Exp1agg_Resp_o$ResponseType)
-
-Exp1agg_Resp_o <- Exp1agg_Resp_o %>%
-  dplyr::rename("Val" = "Validity",
-                "Sal" = "Saliency",
-                "RespType" = "ResponseType",
-                )
-
-
+pander(table(Exp1agg_o$RespType,Exp1agg_o$Dist), style = "rmarkdown", caption = "Factorial combination of Distance and Response(Outliers)")
 ```
 
 
@@ -515,9 +556,11 @@ Exp1agg_RespLC_o <- Exp1agg_RespLC_o %>%
 ```
 
 
+
+```{r aggregateResp4, warning=FALSE, echo=FALSE, include=FALSE}
 #### **4. Aggregate the means with the factors ResponseType, Saliency, Validity,Distance and LastOccurence Condition** 
-Creating a dataframe with the Mean RT across the factors of saliency and validity along with ResponseType and last occurence condition. Separately for farouts and outliers so that it can be distinguished during analysis
-```{r aggregateResp4, warning=FALSE, echo=FALSE}
+# Creating a dataframe with the Mean RT across the factors of saliency and validity along with ResponseType and last occurence condition. Separately for farouts and outliers so that it can be distinguished during analysis
+
 #farouts
 Exp1agg_RespDistLC_fo <- aggregate(data = Exp1data_OL, RT_ifo~participant+Saliency+Validity+ResponseType+LastOcc_Condition+Distance, mean)
 
@@ -564,11 +607,16 @@ Exp1agg_RespDistLC_o <- Exp1agg_RespDistLC_o %>%
 ### 1. ANOVA with RT and the factors of Validity, Saliency and ResponseType
 #### Farouts
 ```{r AnovaResp1, warning=FALSE}
+#using lmer to compute the ANOVA for unbalanced designs 
+model_Resp <- lmer(RT_ifo~Sal*Val*RespType + (1|participant), data = Exp1agg_Resp_fo)
 
-anova_Resp <- aov(data=Exp1agg_Resp_fo, RT_ifo~(RespType*Sal*Val)+Error(participant/(Val*Sal*RespType)))
+#summary(model_Resp)
 
-pander(summary(anova_Resp),style="rmarkdown",caption = "ANOVA Results of RT(Farouts) x Validity, Saliency and responseType")
+anova_Resp <- Anova(model_Resp, test.statistic = "F", type = "3")
+
+pander(anova_Resp,style="rmarkdown",caption = "ANOVA Results of RT(Farouts) x Validity, Saliency and responseType")
 ```
+
 
 #### Plot with ResponseTypeXSaliencyXValidity
 
@@ -587,13 +635,17 @@ ggplot(aggRespSV, aes(RespType,RTmean,color = Val)) +
 #### Outliers
 
 ```{r AnovaResp2, warning=FALSE}
-anova_Resp_o <- aov(RT_io~(RespType*Sal*Val)+Error(participant/(RespType*Sal*Val)), data=Exp1agg_Resp_o)
-table(Exp1agg_Resp_o$Sal)
-pander(summary(anova_Resp_o),style="rmarkdown",caption = "ANOVA Results of RT(Outliers) x Validity, Saliency and responseType")
+model_Resp_o <- lmer(RT_io~Sal*Val*RespType + (1|participant), data = Exp1agg_Resp_o)
+
+#summary(model_Resp_o)
+
+anova_Resp_o <- Anova(model_Resp_o, test.statistic = "F", type = "3")
+
+pander(anova_Resp_o,style="rmarkdown",caption = "ANOVA Results of RT(Outliers) x Validity, Saliency and responseType")
 ```
 
 
-#### Plot with ResponseTypeXSaliencyXValidity
+#### Plot with ResponseTypeXSaliencyXValidity for Outliers
 
 ```{r plotResp2, echo=FALSE}
 aggRespSV_o<- ddply(Exp1agg_o, .(Val,Sal,RespType), summarize, RTmean = mean(RT_io))
@@ -611,117 +663,137 @@ ggplot(aggRespSV_o, aes(RespType,RTmean,color = Val)) +
 
 #### Farouts
 ```{r AnovaResp3, warning=FALSE}
-anova_DistResp <- aov(RT_ifo~(RespType*Sal*Val*Dist)+Error(participant|(RespType*Sal*Val*Dist)),data=Exp1agg_fo)
-which(Exp1agg_fo == 0)
-pander(summary(anova_DistResp),style="rmarkdown",caption = "ANOVA Results of RT x Validity, Saliency,Distance and responseType")
+model_DistRep <- lmer(RT_ifo~Sal*Val*RespType*Dist + (1|participant), data = Exp1agg_fo)
+
+anova_DistResp <- Anova(model_DistRep, test.statistic = "F", type = "3")
+
+pander(anova_DistResp,style="rmarkdown",caption = "ANOVA Results of RT x Validity, Saliency,Distance and responseType")
 ```
+
+
 
 ```{r plotResp, echo=FALSE, include=FALSE}
 
-aggDistRespSV <- ddply(Exp1agg_fo, .(Val,Sal,RespType,Dist), summarize, RTmean=mean(RT_ifo))
-## Plot with ResponseTypeXSaliencyXValidity
-ggplot(aggDistRespSV, aes(ResponseType,RTmean,color = Validity)) +
-  geom_line(aes(group=Validity))+
-  geom_point()+
-  labs(x="Response Type", y = "ReactionTime")+
-  ylim(520,620)+
-  facet_grid(.~Saliency)+
-  facet_wrap(~Distance)+
-  theme_classic()
+# aggDistRespSV <- ddply(Exp1agg_fo, .(Val,Sal,RespType,Dist), summarize, RTmean=mean(RT_ifo))
+# ## Plot with ResponseTypeXSaliencyXValidity
+# ggplot(aggDistRespSV, aes(ResponseType,RTmean,color = Validity)) +
+#   geom_line(aes(group=Validity))+
+#   geom_point()+
+#   labs(x="Response Type", y = "ReactionTime")+
+#   ylim(520,620)+
+#   facet_grid(.~Saliency)+
+#   facet_wrap(~Distance)+
+#   theme_classic()
 
 ```
 
 #### outliers
 
 ```{r AnovaResp4, warning=FALSE}
-anova_DistResp_o <- aov(RT_io~(Val*Sal*RespType*Dist)+Error(participant|(RespType*Sal*Val*Dist)),
-                     data=Exp1agg_o)
-pander(summary(anova_DistResp_o),style="rmarkdown",caption = "ANOVA Results of RT(OUtliers) x Validity, Saliency,Distance and responseType")
+model_DistRep_o <- lmer(RT_io~Sal*Val*RespType*Dist + (1|participant), data = Exp1agg_o)
 
+anova_DistResp_o <- Anova(model_DistRep_o, test.statistic = "F", type = "3")
 
-aggDistRespSV_o<- ddply(Exp1agg_o, .(Validity,Saliency,ResponseType,Distance), summarize, RTmean = mean(RT_io))
+pander(anova_DistResp_o,style="rmarkdown",caption = "ANOVA Results of RT(OUtliers) x Validity, Saliency,Distance and responseType")
+
+#aggDistRespSV_o<- ddply(Exp1agg_o, .(Validity,Saliency,ResponseType,Distance), summarize, RTmean = mean(RT_io))
 ```
 
 ### 3. ANOVA with RT and the factors of Validity, Saliency, ResponseType and LastOccurence Condition
 
 #### Farouts
 ```{r AnovaResp5, warning=FALSE}
-anova_RespLC <- aov(RT_ifo~Validity+Saliency+ResponseType+LastOcc_Condition+
-                       ResponseType*Validity+
-                         ResponseType*LastOcc_Condition+
-                       Validity*Saliency+
-                         Validity*LastOcc_Condition+
-                         Saliency*LastOcc_Condition+
-                        ResponseType*Validity*LastOcc_Condition+
-                         Saliency*Validity*LastOcc_Condition+
-                       Saliency*ResponseType+
-                       ResponseType*Saliency*Validity+
-                         ResponseType*Saliency*Validity*LastOcc_Condition,
-                     data=Exp1agg_RespLC_fo)
-pander(summary(anova_RespLC),style="rmarkdown",caption = "ANOVA Results of RT x Validity, Saliency,LastOccurence condition and responseType")
 
-aggRespLCSV <- ddply(Exp1agg_RespLC_fo, .(Validity,Saliency,ResponseType,LastOcc_Condition), summarize, RTmean=mean(RT_ifo))
+model_RespLC <- lmer(RT_ifo~Sal*Val*RespType*LastOccCond + (1|participant), data = Exp1agg_RespLC_fo)
+
+# Anova(model_RespLC)
+pander(Anova(model_RespLC, test.statistic = "F", type = "3"),style="rmarkdown",caption = "ANOVA Results of RT x Validity, Saliency,LastOccurence condition and responseType")
+
+
+```
+#### Plot showing the interaction between the four factors
+
+```{r plotLC, echo=FALSE}
+aggRespLCSV <- ddply(Exp1agg_RespLC_fo, .(Val,Sal,RespType,LastOccCond), summarize, RTmean=mean(RT_ifo))
+
+ggplot(aggRespLCSV, aes(RespType, RTmean, color = Val,Sal)) +
+  geom_line(aes(group=Val))+
+  geom_point()+
+  labs(x="Response Type", y = "ReactionTime")+
+  ylim(500,750)+
+  facet_grid(cols = vars(Sal), rows = vars(LastOccCond))+
+  theme_classic()
+
 ```
 
 
 #### outliers
 
 ```{r AnovaResp6, warning=FALSE}
-anova_RespLC_o <- aov(RT_io~Validity+Saliency+ResponseType+LastOcc_Condition+
-                       ResponseType*Validity+
-                         ResponseType*LastOcc_Condition+
-                       Validity*Saliency+
-                         Validity*LastOcc_Condition+
-                         Saliency*LastOcc_Condition+
-                        ResponseType*Validity*LastOcc_Condition+
-                         Saliency*Validity*LastOcc_Condition+
-                       Saliency*ResponseType+
-                       ResponseType*Saliency*Validity+
-                         ResponseType*Saliency*Validity*LastOcc_Condition,
-                     data=Exp1agg_RespLC_o)
-pander(summary(anova_RespLC_o),style="rmarkdown",caption = "ANOVA Results of RT(OUtliers) x Validity, Saliency, LastOccurence's Condition and responseType")
+model_RespLC_o <- lmer(RT_io~Sal*Val*RespType*LastOccCond + (1|participant), data = Exp1agg_RespLC_o)
 
-aggRespLCSV_o<- ddply(Exp1agg_RespLC_o, .(Validity,Saliency,ResponseType,LastOcc_Condition), summarize, RTmean = mean(RT_io))
+#Anova(model_RespLC_o, test.statistic = "F", type = "3")
+
+pander(Anova(model_RespLC_o, test.statistic = "F", type = "3"),style="rmarkdown",caption = "ANOVA Results of RT x Validity, Saliency,LastOccurence condition and responseType")
 
 
 ```
+
+
+#### Plot showing the interaction 
+```{r plotLCo, echo=FALSE}
+aggRespLCSV_o <- ddply(Exp1agg_RespLC_o, .(Val,Sal,RespType,LastOccCond), summarize, RTmean=mean(RT_io))
+
+ggplot(aggRespLCSV_o, aes(RespType, RTmean, color = Val,Sal)) +
+  geom_line(aes(group=Val))+
+  geom_point()+
+  labs(x="Response Type", y = "ReactionTime")+
+  ylim(500,750)+
+  facet_grid(cols = vars(Sal), rows = vars(LastOccCond))+
+  theme_classic()
+
+```
+
+
+```{r AnovaResp7, warning=FALSE, include=FALSE}
 
 ### 4. ANOVA with RT and the factors of Validity, Saliency, ResponseType, Distance and LastOccurence Condition
 
-#### Farouts
-```{r AnovaResp7, warning=FALSE}
-anova_RespDistLC <- aov(RT_ifo~Validity+Saliency+ResponseType+LastOcc_Condition+Distance+
-                          Validity*Saliency+
-                         Validity*LastOcc_Condition+
-                         Saliency*LastOcc_Condition+
-                        ResponseType*Validity*LastOcc_Condition+
-                         Saliency*Validity*LastOcc_Condition+
-                       Saliency*ResponseType+
-                       ResponseType*Saliency*Validity+
-                         ResponseType*Saliency*Validity*LastOcc_Condition,
-                     data=Exp1agg_RespDistLC_fo)
-pander(summary(anova_RespLC),style="rmarkdown",caption = "ANOVA Results of RT x Validity, Saliency,LastOccurence condition,Distance and responseType")
-
-
-aggRespDistLCSV <- ddply(Exp1agg_RespDistLC_fo, .(Validity,Saliency,ResponseType,LastOcc_Condition,Distance), summarize, RTmean=mean(RT_ifo))
+# #### Farouts
+# anova_RespDistLC <- aov(RT_ifo~Validity+Saliency+ResponseType+LastOcc_Condition+Distance+
+#                           Validity*Saliency+
+#                          Validity*LastOcc_Condition+
+#                          Saliency*LastOcc_Condition+
+#                         ResponseType*Validity*LastOcc_Condition+
+#                          Saliency*Validity*LastOcc_Condition+
+#                        Saliency*ResponseType+
+#                        ResponseType*Saliency*Validity+
+#                          ResponseType*Saliency*Validity*LastOcc_Condition,
+#                      data=Exp1agg_RespDistLC_fo)
+# pander(summary(anova_RespLC),style="rmarkdown",caption = "ANOVA Results of RT x Validity, Saliency,LastOccurence condition,Distance and responseType")
+# 
+# 
+# aggRespDistLCSV <- ddply(Exp1agg_RespDistLC_fo, .(Validity,Saliency,ResponseType,LastOcc_Condition,Distance), summarize, RTmean=mean(RT_ifo))
 
 ```
 
-#### Outliers
-```{r AnovaResp8, warning=FALSE}
-anova_RespDistLC_o <- aov(RT_io~Validity+Saliency+ResponseType+LastOcc_Condition+Distance+
-                          Validity*Saliency+
-                         Validity*LastOcc_Condition+
-                         Saliency*LastOcc_Condition+
-                        ResponseType*Validity*LastOcc_Condition+
-                         Saliency*Validity*LastOcc_Condition+
-                       Saliency*ResponseType+
-                       ResponseType*Saliency*Validity+
-                         ResponseType*Saliency*Validity*LastOcc_Condition,
-                     data=Exp1agg_RespDistLC_o)
-pander(summary(anova_RespDistLC_o),style="rmarkdown",caption = "ANOVA Results of RT(Outliers) x Validity, Saliency,LastOccurence condition,Distance and responseType")
 
-aggRespDistLCSV_o<- ddply(Exp1agg_RespDistLC_o, .(Validity,Saliency,ResponseType,LastOcc_Condition,Distance), summarize, RTmean = mean(RT_io))
+```{r AnovaResp8, warning=FALSE, include=FALSE}
+
+# #### Outliers
+# anova_RespDistLC_o <- aov(RT_io~Validity+Saliency+ResponseType+LastOcc_Condition+Distance+
+#                           Validity*Saliency+
+#                          Validity*LastOcc_Condition+
+#                          Saliency*LastOcc_Condition+
+#                         ResponseType*Validity*LastOcc_Condition+
+#                          Saliency*Validity*LastOcc_Condition+
+#                        Saliency*ResponseType+
+#                        ResponseType*Saliency*Validity+
+#                          ResponseType*Saliency*Validity*LastOcc_Condition,
+#                      data=Exp1agg_RespDistLC_o)
+# pander(summary(anova_RespDistLC_o),style="rmarkdown",caption = "ANOVA Results of RT(Outliers) x Validity, Saliency,LastOccurence condition,Distance and responseType")
+# 
+# aggRespDistLCSV_o<- ddply(Exp1agg_RespDistLC_o, .(Validity,Saliency,ResponseType,LastOcc_Condition,Distance), summarize, RTmean = mean(RT_io))
 ```
 
 

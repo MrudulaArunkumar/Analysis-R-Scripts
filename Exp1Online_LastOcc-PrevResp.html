@@ -364,7 +364,7 @@ summary {
 
 <h1 class="title toc-ignore">Exp1 Online: LastOccurence&amp;PreviousResponse Analysis</h1>
 <h4 class="author">Mrudula &amp; Carina</h4>
-<h4 class="date">8/24/2020</h4>
+<h4 class="date">26/8/2020</h4>
 
 </div>
 
@@ -377,11 +377,16 @@ summary {
 <h3>Cleaning the datafile</h3>
 <p>To arrive at a clean datafile, certain columns are removed such as columns containing details with instructions, pauses attention Check, etc.</p>
 <p>The column containing the RTs is split because some rows contain more than one RT because the psychopy is designed in such a way that only upon the correct answer the next trial is presented. So in trials that are incorrect there will be more than one RT value registered. However we are only interested in the first response, hence the RT column is split to contain the first response time in a separate column. RTs should also be changed to double as they are represented as strings initially (with the presence of commas and square brackets)</p>
-<p>These RT values are further edited: * Psychopy originally evaluated the RTs from 400ms irrespective of the PreTrial Display time * Hence, to the RT value, 400ms is added and later subtracted by the PreTrialDisplay time(also includes fixation cross) (in ms) for each trial</p>
+<p>These RT values are further edited:</p>
+<ul>
+<li><p>Psychopy originally evaluated the RTs from 400ms irrespective of the PreTrial Display time</p></li>
+<li><p>Hence, to the RT value, 400ms is added and later subtracted by the PreTrialDisplay time(also includes fixation cross) (in ms) for each trial</p></li>
+</ul>
 </div>
 <div id="data-preparation" class="section level3">
 <h3>Data Preparation</h3>
-<p>Since the data is now cleaned to an extent, next steps involves preparing the df <em>Clearly identify the ACC and RT columns </em>New column with error rate <em>Removing the practice trials - Keep the learn trials for previous occurence and last response analysis </em>Remove AttentionCheck</p>
+<p>Since the data is now cleaned to an extent, next steps involves preparing the df</p>
+<p><em>Clearly identify the ACC and RT columns </em>New column with error rate <em>Removing the practice trials - Keep the learn trials for previous occurence and last response analysis </em>Remove AttentionCheck</p>
 </div>
 <div id="descriptive-statistics" class="section level3">
 <h3>Descriptive Statistics</h3>
@@ -595,7 +600,7 @@ summary {
 </tbody>
 </table>
 <table>
-<caption>Summary of RT after removing Outliers</caption>
+<caption>Summary of RT after removing Outliers There are more NAs due to the fact that the learn trials are still part of the dataset and have not been removed yet.</caption>
 <thead>
 <tr class="header">
 <th align="center">Min.</th>
@@ -626,7 +631,7 @@ summary {
 <p>Now, First step is to add a column that contains the value of how far the previous occurence was. It contains the lag variable. First step is to code the variables where the last occurence was the <strong>immediately</strong> preceding trial(where lag = 1).</p>
 <p>Here is the number of the trials where the last occurence was the immediately preceding ones (Binding trials)</p>
 <table>
-<caption>Table showing the number of immediate previous occurence</caption>
+<caption>Table showing the number of immediate previous occurence This is continued further by adding values for previous occurence that were not the immediately preceding (eg. n-2, n-3, n-4….)</caption>
 <thead>
 <tr class="header">
 <th align="center">1</th>
@@ -638,7 +643,6 @@ summary {
 </tr>
 </tbody>
 </table>
-<p>[1] 18016 This is continued further by adding values for previous occurence that were not the immediately preceding (eg. n-2, n-3, n-4….)</p>
 <table>
 <caption>Table showing the number of total previous occurences and how far each of them are (continued below)</caption>
 <thead>
@@ -688,13 +692,14 @@ summary {
 </tr>
 </tbody>
 </table>
+<p>These are the NA values that correspond to the first two trials of each participant and some values that are beyond a certain distance or might not be computed as the trial containing the previous occurence might have been an incorrect one</p>
 <pre><code>## [1] 127</code></pre>
 </div>
 <div id="previous-response" class="section level2">
 <h2>Previous response</h2>
 <p>The following steps aim to check whether the response was repeated or different w.r.t to the previous trial First,another column is created that contains the values “RR” or “RC” based on whether the response is repeated or changed respectively.</p>
 <ul>
-<li>Using lag function to look back at trials to check whether the response was same or different the last time that occurence happened.
+<li><p>Using lag function to look back at trials to check whether the response was same or different the last time that occurence happened.</p>
 <ul>
 <li>If, for example, the previous time Tisch|Kreis occured was a valid test trial 3 rows back where the response expected was “l” then the responsetype column would have the value “RR”</li>
 </ul></li>
@@ -714,7 +719,6 @@ summary {
 </tr>
 </tbody>
 </table>
-<pre><code>## [1] 120</code></pre>
 <table>
 <caption>Factorial combination of Distance x Response Type</caption>
 <thead>
@@ -997,28 +1001,462 @@ summary {
 </tr>
 </tbody>
 </table>
+<p>These are the NA values that correspond to the first two trials of each participant which are the two pairs of learn trials</p>
+<pre><code>## [1] 120</code></pre>
 <div id="the-conditiontestlearn-of-the-last-occurence" class="section level3">
 <h3>The condition(test/learn) of the last occurence</h3>
 <p>Here another column is added to check whether the last occurence was a learn or a test trial</p>
+<table>
+<caption>Number of trials where the last occurence’s condition was learn/test</caption>
+<thead>
+<tr class="header">
+<th align="center">learn</th>
+<th align="center">test</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="center">17225</td>
+<td align="center">11688</td>
+</tr>
+</tbody>
+</table>
 </div>
 </div>
 <div id="statistical-analysis" class="section level2">
 <h2>STATISTICAL ANALYSIS</h2>
 <p>All the learning trials are removed, since only the test trials are used for analysis</p>
-<div id="aggregate-the-means-with-the-factors-responsetype-distance-saliency-validity" class="section level4">
-<h4><strong>1. Aggregate the means with the factors ResponseType, Distance, Saliency, Validity</strong></h4>
-<p>Creating a dataframe with the Mean RT across the factors of saliency and validity along with ResponseType and Distance. Separately for farouts and outliers so that it can be distinguished during analysis</p>
-</div>
 <div id="aggregate-the-means-with-the-factors-responsetype-saliency-validity" class="section level4">
-<h4><strong>2. Aggregate the means with the factors ResponseType, Saliency, Validity</strong></h4>
+<h4><strong>1. Aggregate the means with the factors ResponseType, Saliency, Validity</strong></h4>
 <p>Creating a dataframe with the Mean RT across the factors of saliency and validity along with ResponseType. Separately for farouts and outliers so that it can be distinguished during analysis</p>
+<table>
+<caption>Factorial combination of Distance and Response (continued below)</caption>
+<thead>
+<tr class="header">
+<th align="center"> </th>
+<th align="center">6</th>
+<th align="center">7</th>
+<th align="center">8</th>
+<th align="center">9</th>
+<th align="center">10</th>
+<th align="center">11</th>
+<th align="center">12</th>
+<th align="center">13</th>
+<th align="center">82</th>
+<th align="center">131</th>
+<th align="center">219</th>
+<th align="center">295</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="center"><strong>RC</strong></td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+</tr>
+<tr class="even">
+<td align="center"><strong>RR</strong></td>
+<td align="center">3</td>
+<td align="center">3</td>
+<td align="center">2</td>
+<td align="center">3</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">3</td>
+<td align="center">3</td>
+<td align="center">3</td>
+<td align="center">4</td>
+<td align="center">4</td>
+</tr>
+</tbody>
+</table>
+<table>
+<caption>Table continues below</caption>
+<thead>
+<tr class="header">
+<th align="center"> </th>
+<th align="center">323</th>
+<th align="center">324</th>
+<th align="center">325</th>
+<th align="center">326</th>
+<th align="center">327</th>
+<th align="center">329</th>
+<th align="center">331</th>
+<th align="center">332</th>
+<th align="center">337</th>
+<th align="center">338</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="center"><strong>RC</strong></td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+</tr>
+<tr class="even">
+<td align="center"><strong>RR</strong></td>
+<td align="center">4</td>
+<td align="center">3</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">3</td>
+<td align="center">4</td>
+<td align="center">3</td>
+<td align="center">3</td>
+</tr>
+</tbody>
+</table>
+<table>
+<caption>Table continues below</caption>
+<thead>
+<tr class="header">
+<th align="center"> </th>
+<th align="center">339</th>
+<th align="center">340</th>
+<th align="center">341</th>
+<th align="center">342</th>
+<th align="center">343</th>
+<th align="center">345</th>
+<th align="center">348</th>
+<th align="center">351</th>
+<th align="center">354</th>
+<th align="center">355</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="center"><strong>RC</strong></td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+</tr>
+<tr class="even">
+<td align="center"><strong>RR</strong></td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">3</td>
+<td align="center">4</td>
+<td align="center">3</td>
+<td align="center">3</td>
+<td align="center">4</td>
+<td align="center">3</td>
+<td align="center">3</td>
+<td align="center">2</td>
+</tr>
+</tbody>
+</table>
+<table>
+<caption>Table continues below</caption>
+<thead>
+<tr class="header">
+<th align="center"> </th>
+<th align="center">357</th>
+<th align="center">362</th>
+<th align="center">363</th>
+<th align="center">365</th>
+<th align="center">366</th>
+<th align="center">367</th>
+<th align="center">370</th>
+<th align="center">372</th>
+<th align="center">373</th>
+<th align="center">374</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="center"><strong>RC</strong></td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+</tr>
+<tr class="even">
+<td align="center"><strong>RR</strong></td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">3</td>
+<td align="center">3</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+</tr>
+</tbody>
+</table>
+<table>
+<caption>Table continues below</caption>
+<thead>
+<tr class="header">
+<th align="center"> </th>
+<th align="center">375</th>
+<th align="center">376</th>
+<th align="center">377</th>
+<th align="center">378</th>
+<th align="center">379</th>
+<th align="center">380</th>
+<th align="center">385</th>
+<th align="center">386</th>
+<th align="center">387</th>
+<th align="center">388</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="center"><strong>RC</strong></td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+</tr>
+<tr class="even">
+<td align="center"><strong>RR</strong></td>
+<td align="center">4</td>
+<td align="center">3</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">3</td>
+<td align="center">3</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr class="header">
+<th align="center"> </th>
+<th align="center">389</th>
+<th align="center">390</th>
+<th align="center">391</th>
+<th align="center">392</th>
+<th align="center">393</th>
+<th align="center">396</th>
+<th align="center">397</th>
+<th align="center">398</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="center"><strong>RC</strong></td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+</tr>
+<tr class="even">
+<td align="center"><strong>RR</strong></td>
+<td align="center">3</td>
+<td align="center">3</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">4</td>
+<td align="center">3</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="aggregate-the-means-with-the-factors-responsetype-distance-saliency-validity" class="section level4">
+<h4><strong>2. Aggregate the means with the factors ResponseType, Distance, Saliency, Validity</strong></h4>
+<p>Creating a dataframe with the Mean RT across the factors of saliency and validity along with ResponseType and Distance. Separately for farouts and outliers so that it can be distinguished during analysis</p>
+<table>
+<caption>Factorial combination of Distance and Response(Farouts) (continued below)</caption>
+<thead>
+<tr class="header">
+<th align="center"> </th>
+<th align="center">1</th>
+<th align="center">2</th>
+<th align="center">3</th>
+<th align="center">4</th>
+<th align="center">5</th>
+<th align="center">6</th>
+<th align="center">7</th>
+<th align="center">8</th>
+<th align="center">9</th>
+<th align="center">10</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="center"><strong>RC</strong></td>
+<td align="center">235</td>
+<td align="center">229</td>
+<td align="center">220</td>
+<td align="center">206</td>
+<td align="center">184</td>
+<td align="center">162</td>
+<td align="center">118</td>
+<td align="center">87</td>
+<td align="center">56</td>
+<td align="center">24</td>
+</tr>
+<tr class="even">
+<td align="center"><strong>RR</strong></td>
+<td align="center">144</td>
+<td align="center">152</td>
+<td align="center">146</td>
+<td align="center">142</td>
+<td align="center">141</td>
+<td align="center">126</td>
+<td align="center">90</td>
+<td align="center">66</td>
+<td align="center">44</td>
+<td align="center">18</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr class="header">
+<th align="center"> </th>
+<th align="center">11</th>
+<th align="center">12</th>
+<th align="center">13</th>
+<th align="center">14</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="center"><strong>RC</strong></td>
+<td align="center">20</td>
+<td align="center">5</td>
+<td align="center">1</td>
+<td align="center">4</td>
+</tr>
+<tr class="even">
+<td align="center"><strong>RR</strong></td>
+<td align="center">14</td>
+<td align="center">5</td>
+<td align="center">0</td>
+<td align="center">0</td>
+</tr>
+</tbody>
+</table>
+<table>
+<caption>Factorial combination of Distance and Response(Outliers) (continued below)</caption>
+<thead>
+<tr class="header">
+<th align="center"> </th>
+<th align="center">1</th>
+<th align="center">2</th>
+<th align="center">3</th>
+<th align="center">4</th>
+<th align="center">5</th>
+<th align="center">6</th>
+<th align="center">7</th>
+<th align="center">8</th>
+<th align="center">9</th>
+<th align="center">10</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="center"><strong>RC</strong></td>
+<td align="center">234</td>
+<td align="center">227</td>
+<td align="center">219</td>
+<td align="center">205</td>
+<td align="center">182</td>
+<td align="center">159</td>
+<td align="center">115</td>
+<td align="center">84</td>
+<td align="center">55</td>
+<td align="center">23</td>
+</tr>
+<tr class="even">
+<td align="center"><strong>RR</strong></td>
+<td align="center">144</td>
+<td align="center">152</td>
+<td align="center">145</td>
+<td align="center">142</td>
+<td align="center">138</td>
+<td align="center">124</td>
+<td align="center">89</td>
+<td align="center">65</td>
+<td align="center">44</td>
+<td align="center">18</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr class="header">
+<th align="center"> </th>
+<th align="center">11</th>
+<th align="center">12</th>
+<th align="center">13</th>
+<th align="center">14</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="center"><strong>RC</strong></td>
+<td align="center">18</td>
+<td align="center">4</td>
+<td align="center">1</td>
+<td align="center">4</td>
+</tr>
+<tr class="even">
+<td align="center"><strong>RR</strong></td>
+<td align="center">14</td>
+<td align="center">5</td>
+<td align="center">0</td>
+<td align="center">0</td>
+</tr>
+</tbody>
+</table>
 </div>
 <div id="aggregate-the-means-with-the-factors-responsetype-saliency-validity-and-lastoccurence-condition" class="section level4">
 <h4><strong>3. Aggregate the means with the factors ResponseType, Saliency, Validity and LastOccurence Condition</strong></h4>
-<p>Creating a dataframe with the Mean RT across the factors of saliency and validity along with ResponseType and last occurence condition. Separately for farouts and outliers so that it can be distinguished during analysis</p>
-</div>
-<div id="aggregate-the-means-with-the-factors-responsetype-saliency-validitydistance-and-lastoccurence-condition" class="section level4">
-<h4><strong>4. Aggregate the means with the factors ResponseType, Saliency, Validity,Distance and LastOccurence Condition</strong></h4>
 <p>Creating a dataframe with the Mean RT across the factors of saliency and validity along with ResponseType and last occurence condition. Separately for farouts and outliers so that it can be distinguished during analysis</p>
 </div>
 </div>
@@ -1028,122 +1466,81 @@ summary {
 <h3>1. ANOVA with RT and the factors of Validity, Saliency and ResponseType</h3>
 <div id="farouts" class="section level4">
 <h4>Farouts</h4>
-<pre class="r"><code>anova_Resp &lt;- aov(RT_ifo~Validity+Saliency+ResponseType+
-                       ResponseType*Validity+
-                       Validity*Saliency+
-                       Saliency*ResponseType+
-                       ResponseType*Saliency*Validity,
-                     data=Exp1agg_Resp_fo)
-pander(summary(anova_Resp),style=&quot;rmarkdown&quot;,caption = &quot;ANOVA Results of RT(Farouts) x Validity, Saliency and responseType&quot;)</code></pre>
+<pre class="r"><code>#using lmer to compute the ANOVA for unbalanced designs 
+model_Resp &lt;- lmer(RT_ifo~Sal*Val*RespType + (1|participant), data = Exp1agg_Resp_fo)
+
+#summary(model_Resp)
+
+anova_Resp &lt;- Anova(model_Resp, test.statistic = &quot;F&quot;, type = &quot;3&quot;)
+
+pander(anova_Resp,style=&quot;rmarkdown&quot;,caption = &quot;ANOVA Results of RT(Farouts) x Validity, Saliency and responseType&quot;)</code></pre>
 <table>
-<caption>ANOVA Results of RT(Farouts) x Validity, Saliency and responseType (continued below)</caption>
+<caption>ANOVA Results of RT(Farouts) x Validity, Saliency and responseType</caption>
 <thead>
 <tr class="header">
 <th align="center"> </th>
+<th align="center">F</th>
 <th align="center">Df</th>
-<th align="center">Sum Sq</th>
-<th align="center">Mean Sq</th>
-<th align="center">F value</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td align="center"><strong>Validity</strong></td>
-<td align="center">1</td>
-<td align="center">283.2</td>
-<td align="center">283.2</td>
-<td align="center">0.04307</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Saliency</strong></td>
-<td align="center">1</td>
-<td align="center">9825</td>
-<td align="center">9825</td>
-<td align="center">1.494</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>ResponseType</strong></td>
-<td align="center">1</td>
-<td align="center">880.5</td>
-<td align="center">880.5</td>
-<td align="center">0.1339</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Validity:ResponseType</strong></td>
-<td align="center">1</td>
-<td align="center">447.9</td>
-<td align="center">447.9</td>
-<td align="center">0.0681</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:Saliency</strong></td>
-<td align="center">1</td>
-<td align="center">19620</td>
-<td align="center">19620</td>
-<td align="center">2.983</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Saliency:ResponseType</strong></td>
-<td align="center">1</td>
-<td align="center">17992</td>
-<td align="center">17992</td>
-<td align="center">2.736</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:Saliency:ResponseType</strong></td>
-<td align="center">1</td>
-<td align="center">14543</td>
-<td align="center">14543</td>
-<td align="center">2.211</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Residuals</strong></td>
-<td align="center">445</td>
-<td align="center">2926603</td>
-<td align="center">6577</td>
-<td align="center">NA</td>
-</tr>
-</tbody>
-</table>
-<table>
-<thead>
-<tr class="header">
-<th align="center"> </th>
+<th align="center">Df.res</th>
 <th align="center">Pr(&gt;F)</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
-<td align="center"><strong>Validity</strong></td>
-<td align="center">0.8357</td>
+<td align="center"><strong>(Intercept)</strong></td>
+<td align="center">3067</td>
+<td align="center">1</td>
+<td align="center">105.3</td>
+<td align="center">1.119e-79</td>
 </tr>
 <tr class="even">
-<td align="center"><strong>Saliency</strong></td>
-<td align="center">0.2223</td>
+<td align="center"><strong>Sal</strong></td>
+<td align="center">0.03821</td>
+<td align="center">1</td>
+<td align="center">386</td>
+<td align="center">0.8451</td>
 </tr>
 <tr class="odd">
-<td align="center"><strong>ResponseType</strong></td>
-<td align="center">0.7146</td>
+<td align="center"><strong>Val</strong></td>
+<td align="center">0.1906</td>
+<td align="center">1</td>
+<td align="center">386</td>
+<td align="center">0.6627</td>
 </tr>
 <tr class="even">
-<td align="center"><strong>Validity:ResponseType</strong></td>
-<td align="center">0.7942</td>
+<td align="center"><strong>RespType</strong></td>
+<td align="center">6.412</td>
+<td align="center">1</td>
+<td align="center">386.9</td>
+<td align="center">0.01173</td>
 </tr>
 <tr class="odd">
-<td align="center"><strong>Validity:Saliency</strong></td>
-<td align="center">0.08482</td>
+<td align="center"><strong>Sal:Val</strong></td>
+<td align="center">0.3455</td>
+<td align="center">1</td>
+<td align="center">386</td>
+<td align="center">0.557</td>
 </tr>
 <tr class="even">
-<td align="center"><strong>Saliency:ResponseType</strong></td>
-<td align="center">0.09883</td>
+<td align="center"><strong>Sal:RespType</strong></td>
+<td align="center">17.61</td>
+<td align="center">1</td>
+<td align="center">386.9</td>
+<td align="center">3.365e-05</td>
 </tr>
 <tr class="odd">
-<td align="center"><strong>Validity:Saliency:ResponseType</strong></td>
-<td align="center">0.1377</td>
+<td align="center"><strong>Val:RespType</strong></td>
+<td align="center">3.152</td>
+<td align="center">1</td>
+<td align="center">386.5</td>
+<td align="center">0.07663</td>
 </tr>
 <tr class="even">
-<td align="center"><strong>Residuals</strong></td>
-<td align="center">NA</td>
+<td align="center"><strong>Sal:Val:RespType</strong></td>
+<td align="center">8.065</td>
+<td align="center">1</td>
+<td align="center">386.5</td>
+<td align="center">0.004751</td>
 </tr>
 </tbody>
 </table>
@@ -1154,1676 +1551,634 @@ pander(summary(anova_Resp),style=&quot;rmarkdown&quot;,caption = &quot;ANOVA Res
 </div>
 <div id="outliers" class="section level4">
 <h4>Outliers</h4>
-<pre class="r"><code>anova_Resp_o &lt;- aov(RT_io~Validity+Saliency+ResponseType+
-                       ResponseType*Validity+
-                       Validity*Saliency+
-                       Saliency*ResponseType+
-                       ResponseType*Saliency*Validity,
-                     data=Exp1agg_Resp_o)
-pander(summary(anova_Resp_o),style=&quot;rmarkdown&quot;,caption = &quot;ANOVA Results of RT(Farouts) x Validity, Saliency and responseType&quot;)</code></pre>
+<pre class="r"><code>model_Resp_o &lt;- lmer(RT_io~Sal*Val*RespType + (1|participant), data = Exp1agg_Resp_o)
+
+#summary(model_Resp_o)
+
+anova_Resp_o &lt;- Anova(model_Resp_o, test.statistic = &quot;F&quot;, type = &quot;3&quot;)
+
+pander(anova_Resp_o,style=&quot;rmarkdown&quot;,caption = &quot;ANOVA Results of RT(Outliers) x Validity, Saliency and responseType&quot;)</code></pre>
 <table>
-<caption>ANOVA Results of RT(Farouts) x Validity, Saliency and responseType (continued below)</caption>
+<caption>ANOVA Results of RT(Outliers) x Validity, Saliency and responseType</caption>
 <thead>
 <tr class="header">
 <th align="center"> </th>
+<th align="center">F</th>
 <th align="center">Df</th>
-<th align="center">Sum Sq</th>
-<th align="center">Mean Sq</th>
-<th align="center">F value</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td align="center"><strong>Validity</strong></td>
-<td align="center">1</td>
-<td align="center">45.51</td>
-<td align="center">45.51</td>
-<td align="center">0.008221</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Saliency</strong></td>
-<td align="center">1</td>
-<td align="center">3219</td>
-<td align="center">3219</td>
-<td align="center">0.5814</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>ResponseType</strong></td>
-<td align="center">1</td>
-<td align="center">1723</td>
-<td align="center">1723</td>
-<td align="center">0.3112</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Validity:ResponseType</strong></td>
-<td align="center">1</td>
-<td align="center">412.9</td>
-<td align="center">412.9</td>
-<td align="center">0.07457</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:Saliency</strong></td>
-<td align="center">1</td>
-<td align="center">8455</td>
-<td align="center">8455</td>
-<td align="center">1.527</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Saliency:ResponseType</strong></td>
-<td align="center">1</td>
-<td align="center">10066</td>
-<td align="center">10066</td>
-<td align="center">1.818</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:Saliency:ResponseType</strong></td>
-<td align="center">1</td>
-<td align="center">5655</td>
-<td align="center">5655</td>
-<td align="center">1.022</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Residuals</strong></td>
-<td align="center">443</td>
-<td align="center">2452609</td>
-<td align="center">5536</td>
-<td align="center">NA</td>
-</tr>
-</tbody>
-</table>
-<table>
-<thead>
-<tr class="header">
-<th align="center"> </th>
+<th align="center">Df.res</th>
 <th align="center">Pr(&gt;F)</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
-<td align="center"><strong>Validity</strong></td>
-<td align="center">0.9278</td>
+<td align="center"><strong>(Intercept)</strong></td>
+<td align="center">3503</td>
+<td align="center">1</td>
+<td align="center">93.57</td>
+<td align="center">6.028e-76</td>
 </tr>
 <tr class="even">
-<td align="center"><strong>Saliency</strong></td>
-<td align="center">0.4462</td>
+<td align="center"><strong>Sal</strong></td>
+<td align="center">0.001029</td>
+<td align="center">1</td>
+<td align="center">384</td>
+<td align="center">0.9744</td>
 </tr>
 <tr class="odd">
-<td align="center"><strong>ResponseType</strong></td>
-<td align="center">0.5772</td>
+<td align="center"><strong>Val</strong></td>
+<td align="center">0.000258</td>
+<td align="center">1</td>
+<td align="center">384</td>
+<td align="center">0.9872</td>
 </tr>
 <tr class="even">
-<td align="center"><strong>Validity:ResponseType</strong></td>
-<td align="center">0.7849</td>
+<td align="center"><strong>RespType</strong></td>
+<td align="center">5.82</td>
+<td align="center">1</td>
+<td align="center">384.8</td>
+<td align="center">0.01631</td>
 </tr>
 <tr class="odd">
-<td align="center"><strong>Validity:Saliency</strong></td>
-<td align="center">0.2172</td>
+<td align="center"><strong>Sal:Val</strong></td>
+<td align="center">0.3348</td>
+<td align="center">1</td>
+<td align="center">384</td>
+<td align="center">0.5632</td>
 </tr>
 <tr class="even">
-<td align="center"><strong>Saliency:ResponseType</strong></td>
-<td align="center">0.1782</td>
+<td align="center"><strong>Sal:RespType</strong></td>
+<td align="center">12.42</td>
+<td align="center">1</td>
+<td align="center">384.8</td>
+<td align="center">0.000477</td>
 </tr>
 <tr class="odd">
-<td align="center"><strong>Validity:Saliency:ResponseType</strong></td>
-<td align="center">0.3127</td>
+<td align="center"><strong>Val:RespType</strong></td>
+<td align="center">4.297</td>
+<td align="center">1</td>
+<td align="center">384.4</td>
+<td align="center">0.03884</td>
 </tr>
 <tr class="even">
-<td align="center"><strong>Residuals</strong></td>
-<td align="center">NA</td>
+<td align="center"><strong>Sal:Val:RespType</strong></td>
+<td align="center">4.764</td>
+<td align="center">1</td>
+<td align="center">384.4</td>
+<td align="center">0.02967</td>
 </tr>
 </tbody>
 </table>
 </div>
-<div id="plot-with-responsetypexsaliencyxvalidity-1" class="section level4">
-<h4>Plot with ResponseTypeXSaliencyXValidity</h4>
-<p><img src="data:image/png;base64,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ev/EcE301rmimdf7Ty2YTRL/WIQJKFPSWAIC7+F6uYJ5eVjLYUxfym4Px+7Zf8/3X1gwmyT+sQgTUKaksQQc/j2Mmpm7c7YcrefpvHuuGMnPmU0S/1iECShT0lgCDv8exs2syQN65+yT332x3//ChdnZ0HmWCKYcOj7Nc/j3cPP0k1d+9Pv9/mf+vPLgnbPZuudoH9JkFfWh0rb/Umzf1IIH0Wo1SCigrxeZrGzvvJzvPbre75+5Mvj56/3xSF5AGZla8CCcreY4/Hu43s8zefftSSazffHZ7cvlTviZfUlJ/FMB1IUCWuTx/PiYpeunT7xU/5Enr9TnIqBAeiJD+HLNM9sYmt+43J/a+X7z9NR+JgEFEhQJaFnH0Y23p/s5Set4LgIKpCdyHGjZy2Kgfvd8/zPvjKaUu99nTkgSUCBBgbKdr+0qOl/Z3llOqR1qX8xFQIH0BMp283T/+QujvfCXq/uLhlPOXBncenF6H5KAAimKlO16cbx8tud9dP26oWzl83J5MabpU5EEFEhQqGy3Xj9dnrB5vV8L6OBWdnHQM1emnyCgQII2UzYBBRIkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQ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" width="672" /></p>
+<div id="plot-with-responsetypexsaliencyxvalidity-for-outliers" class="section level4">
+<h4>Plot with ResponseTypeXSaliencyXValidity for Outliers</h4>
+<p><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABUAAAAPACAMAAADDuCPrAAAB3VBMVEUAAAAAADoAAGYAOjoAOmYAOpAAZrYAv8QZGUgZGXEZSEgZSHEZSJcZcboaGhozMzM6AAA6OgA6Ojo6OmY6OpA6ZmY6ZpA6ZrY6kJA6kLY6kNtIGRlISBlISEhISHFIcZdIcbpIl7pIl91NTU1NTW5NTY5Nbm5Nbo5NbqtNjshmAABmADpmOgBmOjpmOpBmZjpmZmZmZpBmkGZmkJBmkLZmkNtmtttmtv9uTU1ubk1ubo5ujqtujshuq+RxGRlxSBlxSEhxl5dxl7pxut1xuv+OTU2Obk2Obm6OyOSOyP+QOgCQOjqQZjqQZmaQkGaQkLaQttuQ2/+XSBmXcUiXl3GXl7qXut2X3f+rbk2rjm6ryOSr5P+2ZgC2Zjq2Zma2kDq2kGa2tra2ttu229u22/+2//+6cRm6cUi6l0i6l3G6l5e63d263f+6///Ijk3Ijm7Iq27IyKvI5P/I///bkDrbkGbbtmbbtpDbtrbbttvb25Db27bb29vb2//b///dl0jdl3HdunHdupfdurrd3f/d///kq27kyI7kyKvk5Mjk///4dm3/tmb/unH/yI7/25D/27b/29v/3Zf/3br/3d3/5Kv/5Mj/5OT//7b//7r//8j//9v//93//+T////M02MQAAAACXBIWXMAAB2HAAAdhwGP5fFlAAAgAElEQVR4nO3d+6Mc5X3Y4RUIcJtEHOQCCTSN2xXmErmQmIBihNM2FjbEOCRpUxEfahxsJ20SEQsFnNgoTVrLriRLYEeyrIP2b+3OZXdn9nJ0zndvM+88zw9oL9p9z+rMfph3Zna2NwAgpLftHwCgrQQUIEhAAYIEFCBIQAGCBBQgSEABggQUIEhAAYIEFCBIQAGCBBQgSEABgjYU0B6dZ4lgymbis1YCyoZYIpiymfislYCyIZYIpmwmPmu1uYBuZiCaaWYBsER0XRpLgICyCQLKlDSWAAFlEwSUKWksAQLKJggoU9JYAgSUTRBQpqSxBAgomyCgTEljCRBQNkFAmZLGEiCgbIKAMiWNJUBA2QQBZUoaS4CAsgkCypQ0lgABZRMElClpLAECyiYIKFPSWAIElE0QUKaksQQI6Mb94ov/6m8G/3jsP+zzVz75n5/Z2I+zGQI61snf/xxpLAECunEHeAP95NivbOzH2QwBHevk73+ONJYAAd24/A20v/TeQAI61snf/xxpLAECunGdfAMJ6Fgnf/9zpLEECGjEd4596Z/+7bFjv/HX+bWf/cmx0eXaHT/7T8Pbf/33i4f8c3blX/+XH9ancD/7k8ePHft3Uw/95I+HfzWxt1AXA+r3v680lgABjfjOsV/PlvFj+arETx7PL3/qS1N3/LS4vXgn/MWx8ZXKG+incx+a4huogwH1+99fGkuAgEZ8Z7h8/3DwT48f+1L+JviN/zv45C+Ofeq/1+4Yvg3+/XB9458fz27/ybFP/enwcf+U/aXJG+gXXzz2mR8OPvnLvLfV50xvCte9gPr930UaS4CARnzn2C//MP9j+C74x3Jh/072Z+WOX3wxe+eMH5DP2IZvqi9V3kCjh+ZXqs+Z3huoewH1+7+LNJYAAY34TrGAZ2+A/D2R+Un2Bqjf8Ut/VX3Qv/yf//p7x6pvoE/+uHyL/fTx+kMTfAN1L6B+/3eRxhIgoBHlCkW2sI9XNPL3ReWO4X+Gfum//TC/92e/V24Eq72Bjo1MPTS9N1D3Aur3fxdpLAECGlELaHlQykxAB9lO1aHP/LDYW/Cpf/ef/6o2hfvFF7vzBupgQP3+95fGEiCgEQdaAx365H9lB6/k6xq/kq2JfDL1BqpsJUv8DdTFgPr97yuNJUBAIyoL+/Q20FpAhz75y+Hto7fKcJ2jPoX70tznTPAN1M2ADvz+F0tjCRDQiPqmztpe+PEdP328mNtnewhGb6CfHMtXPCZ7YfMdr7PtTe8N1L2A+v3fRRpLgIBGVBf24jjQf/mT8jjQ6qrpL//1YPCzPy4u/0p+wF/9DTRcIcn+SnHsX/0NVLyz0tG9gPr930UaS4CARtRm6vVPItXKmvulv8lXPTK//Jej3U7FJ1HKhx77zJyHpvUW6l5A/f7vIo0lQEAj6ps6a5+Fr9yRf9A5//jzYPDPvze8+Pv5qsXsZ6H/dOah//vxxN5AHQyo3//+0lgCBJRN6GJA2VcaS4CAsgkCypQ0lgABZRMElClpLAECyiYIKFPSWAIElE0QUKaksQQIKJsgoExJYwkIvYY7757q9z/7leLKj7/c75946Xx++faZfu6J96aHSeIfizABZUoaS0DkNdwsM3k6u/JucfnE17MrN04JKPMIKFPSWAICr+HO2f6T5wd3/jaP5rX+ieGa6M2zRTOv9Z9eMEwS/1iECShT0lgCAq/hWrmCeWlYy2FMX80uD+fu2Z/n+i8vGCaJfyzCBJQpaSwBh38No2bmbp8pZ+t5Ou+cLWbyc4ZJ4h+LMAFlShpLwOFfw7iZNXlAb5956ruv9PtfOD87DJ1niWDKoePTPId/DTdOPXX5R7/b7z/5Z5Ubb5/J1j1H+5Amq6gPlrb9m2L7phY8iFarQUIBfbPIZGV756V879G1fv/05cHP3+yPZ/ICysjUggfhbDXH4V/DtX6eyTvvTjKZ7YvPLl8qd8LP7EtK4p8KoC4U0CKP58bHLF07deLV+l956nJ9FAEF0hOZwpdrntnG0PzCpf7Uzvcbp6b2MwkokKBIQMs6ji68O93PSVrHowgokJ7IcaBlL4uJ+p1z/SffG91T7n6f+UCSgAIJCpTtXG1X0bnK9s7yntqh9sUoAgqkJ1C2G6f6L50f7YW/VN1fNLzn9OXBzVem9yEJKJCiSNmuFcfLZ3veR+evG8pWPi+VJ2Oa/iiSgAIJCpXt5punyg9sXuvXAjq4mZ0c9PTl6QcIKJCgzZRNQIEECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAko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" width="672" /></p>
 </div>
 </div>
 <div id="anova-with-rt-and-the-factors-of-validity-saliency-responsetype-and-distance" class="section level3">
 <h3>2. ANOVA with RT and the factors of Validity, Saliency, ResponseType and Distance</h3>
 <div id="farouts-1" class="section level4">
 <h4>Farouts</h4>
-<pre class="r"><code>anova_DistResp &lt;- aov(RT_ifo~Validity+Saliency+ResponseType+Distance+
-                       ResponseType*Validity+
-                         ResponseType*Distance+
-                       Validity*Saliency+
-                         Validity*Distance+
-                         Saliency*Distance+
-                        ResponseType*Validity*Distance+
-                         Saliency*Validity*Distance+
-                       Saliency*ResponseType+
-                       ResponseType*Saliency*Validity+
-                         ResponseType*Saliency*Validity*Distance,
-                     data=Exp1agg_fo)
-pander(summary(anova_DistResp),style=&quot;rmarkdown&quot;,caption = &quot;ANOVA Results of RT x Validity, Saliency,Distance and responseType&quot;)</code></pre>
+<pre class="r"><code>model_DistRep &lt;- lmer(RT_ifo~Sal*Val*RespType*Dist + (1|participant), data = Exp1agg_fo)</code></pre>
+<pre><code>## fixed-effect model matrix is rank deficient so dropping 14 columns / coefficients</code></pre>
+<pre class="r"><code>anova_DistResp &lt;- Anova(model_DistRep, test.statistic = &quot;F&quot;, type = &quot;3&quot;)
+
+pander(anova_DistResp,style=&quot;rmarkdown&quot;,caption = &quot;ANOVA Results of RT x Validity, Saliency,Distance and responseType&quot;)</code></pre>
 <table>
-<caption>ANOVA Results of RT x Validity, Saliency,Distance and responseType (continued below)</caption>
+<caption>ANOVA Results of RT x Validity, Saliency,Distance and responseType</caption>
 <thead>
 <tr class="header">
 <th align="center"> </th>
+<th align="center">F</th>
 <th align="center">Df</th>
-<th align="center">Sum Sq</th>
-<th align="center">Mean Sq</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td align="center"><strong>Validity</strong></td>
-<td align="center">1</td>
-<td align="center">84.88</td>
-<td align="center">84.88</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Saliency</strong></td>
-<td align="center">1</td>
-<td align="center">22158</td>
-<td align="center">22158</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>ResponseType</strong></td>
-<td align="center">1</td>
-<td align="center">6149</td>
-<td align="center">6149</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Distance</strong></td>
-<td align="center">13</td>
-<td align="center">98197</td>
-<td align="center">7554</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:ResponseType</strong></td>
-<td align="center">1</td>
-<td align="center">5295</td>
-<td align="center">5295</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>ResponseType:Distance</strong></td>
-<td align="center">11</td>
-<td align="center">100538</td>
-<td align="center">9140</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:Saliency</strong></td>
-<td align="center">1</td>
-<td align="center">10047</td>
-<td align="center">10047</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Validity:Distance</strong></td>
-<td align="center">12</td>
-<td align="center">74454</td>
-<td align="center">6205</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Saliency:Distance</strong></td>
-<td align="center">12</td>
-<td align="center">162118</td>
-<td align="center">13510</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Saliency:ResponseType</strong></td>
-<td align="center">1</td>
-<td align="center">73072</td>
-<td align="center">73072</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:ResponseType:Distance</strong></td>
-<td align="center">11</td>
-<td align="center">193882</td>
-<td align="center">17626</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Validity:Saliency:Distance</strong></td>
-<td align="center">11</td>
-<td align="center">124718</td>
-<td align="center">11338</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:Saliency:ResponseType</strong></td>
-<td align="center">1</td>
-<td align="center">66839</td>
-<td align="center">66839</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Saliency:ResponseType:Distance</strong></td>
-<td align="center">10</td>
-<td align="center">105379</td>
-<td align="center">10538</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:Saliency:ResponseType:Distance</strong></td>
-<td align="center">10</td>
-<td align="center">119926</td>
-<td align="center">11993</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Residuals</strong></td>
-<td align="center">2541</td>
-<td align="center">26892683</td>
-<td align="center">10584</td>
-</tr>
-</tbody>
-</table>
-<table>
-<thead>
-<tr class="header">
-<th align="center"> </th>
-<th align="center">F value</th>
+<th align="center">Df.res</th>
 <th align="center">Pr(&gt;F)</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
-<td align="center"><strong>Validity</strong></td>
-<td align="center">0.00802</td>
-<td align="center">0.9286</td>
+<td align="center"><strong>(Intercept)</strong></td>
+<td align="center">1953</td>
+<td align="center">1</td>
+<td align="center">248.9</td>
+<td align="center">7.966e-120</td>
 </tr>
 <tr class="even">
-<td align="center"><strong>Saliency</strong></td>
-<td align="center">2.094</td>
-<td align="center">0.148</td>
+<td align="center"><strong>Sal</strong></td>
+<td align="center">0.3201</td>
+<td align="center">1</td>
+<td align="center">2482</td>
+<td align="center">0.5716</td>
 </tr>
 <tr class="odd">
-<td align="center"><strong>ResponseType</strong></td>
-<td align="center">0.581</td>
-<td align="center">0.446</td>
+<td align="center"><strong>Val</strong></td>
+<td align="center">0.1402</td>
+<td align="center">1</td>
+<td align="center">2482</td>
+<td align="center">0.7081</td>
 </tr>
 <tr class="even">
-<td align="center"><strong>Distance</strong></td>
-<td align="center">0.7137</td>
-<td align="center">0.7514</td>
+<td align="center"><strong>RespType</strong></td>
+<td align="center">2.3</td>
+<td align="center">1</td>
+<td align="center">2484</td>
+<td align="center">0.1295</td>
 </tr>
 <tr class="odd">
-<td align="center"><strong>Validity:ResponseType</strong></td>
-<td align="center">0.5003</td>
-<td align="center">0.4794</td>
+<td align="center"><strong>Dist</strong></td>
+<td align="center">2.142</td>
+<td align="center">13</td>
+<td align="center">2483</td>
+<td align="center">0.009817</td>
 </tr>
 <tr class="even">
-<td align="center"><strong>ResponseType:Distance</strong></td>
-<td align="center">0.8636</td>
-<td align="center">0.576</td>
+<td align="center"><strong>Sal:Val</strong></td>
+<td align="center">0.105</td>
+<td align="center">1</td>
+<td align="center">2482</td>
+<td align="center">0.7459</td>
 </tr>
 <tr class="odd">
-<td align="center"><strong>Validity:Saliency</strong></td>
-<td align="center">0.9493</td>
-<td align="center">0.33</td>
+<td align="center"><strong>Sal:RespType</strong></td>
+<td align="center">0.7285</td>
+<td align="center">1</td>
+<td align="center">2484</td>
+<td align="center">0.3935</td>
 </tr>
 <tr class="even">
-<td align="center"><strong>Validity:Distance</strong></td>
-<td align="center">0.5862</td>
-<td align="center">0.855</td>
+<td align="center"><strong>Val:RespType</strong></td>
+<td align="center">4.472</td>
+<td align="center">1</td>
+<td align="center">2483</td>
+<td align="center">0.03455</td>
 </tr>
 <tr class="odd">
-<td align="center"><strong>Saliency:Distance</strong></td>
-<td align="center">1.277</td>
-<td align="center">0.2253</td>
+<td align="center"><strong>Sal:Dist</strong></td>
+<td align="center">2.55</td>
+<td align="center">12</td>
+<td align="center">2483</td>
+<td align="center">0.002368</td>
 </tr>
 <tr class="even">
-<td align="center"><strong>Saliency:ResponseType</strong></td>
-<td align="center">6.904</td>
-<td align="center">0.00865</td>
+<td align="center"><strong>Val:Dist</strong></td>
+<td align="center">0.5005</td>
+<td align="center">12</td>
+<td align="center">2483</td>
+<td align="center">0.9155</td>
 </tr>
 <tr class="odd">
-<td align="center"><strong>Validity:ResponseType:Distance</strong></td>
-<td align="center">1.665</td>
-<td align="center">0.07518</td>
+<td align="center"><strong>RespType:Dist</strong></td>
+<td align="center">3.58</td>
+<td align="center">11</td>
+<td align="center">2484</td>
+<td align="center">5.005e-05</td>
 </tr>
 <tr class="even">
-<td align="center"><strong>Validity:Saliency:Distance</strong></td>
-<td align="center">1.071</td>
-<td align="center">0.3806</td>
+<td align="center"><strong>Sal:Val:RespType</strong></td>
+<td align="center">1.411</td>
+<td align="center">1</td>
+<td align="center">2484</td>
+<td align="center">0.235</td>
 </tr>
 <tr class="odd">
-<td align="center"><strong>Validity:Saliency:ResponseType</strong></td>
-<td align="center">6.315</td>
-<td align="center">0.01203</td>
+<td align="center"><strong>Sal:Val:Dist</strong></td>
+<td align="center">0.4205</td>
+<td align="center">11</td>
+<td align="center">2483</td>
+<td align="center">0.9478</td>
 </tr>
 <tr class="even">
-<td align="center"><strong>Saliency:ResponseType:Distance</strong></td>
-<td align="center">0.9957</td>
-<td align="center">0.4446</td>
+<td align="center"><strong>Sal:RespType:Dist</strong></td>
+<td align="center">2.721</td>
+<td align="center">11</td>
+<td align="center">2485</td>
+<td align="center">0.001698</td>
 </tr>
 <tr class="odd">
-<td align="center"><strong>Validity:Saliency:ResponseType:Distance</strong></td>
-<td align="center">1.133</td>
-<td align="center">0.3328</td>
+<td align="center"><strong>Val:RespType:Dist</strong></td>
+<td align="center">2.188</td>
+<td align="center">10</td>
+<td align="center">2484</td>
+<td align="center">0.01605</td>
 </tr>
 <tr class="even">
-<td align="center"><strong>Residuals</strong></td>
-<td align="center">NA</td>
-<td align="center">NA</td>
+<td align="center"><strong>Sal:Val:RespType:Dist</strong></td>
+<td align="center">1.149</td>
+<td align="center">10</td>
+<td align="center">2484</td>
+<td align="center">0.3213</td>
 </tr>
 </tbody>
 </table>
 </div>
 <div id="outliers-1" class="section level4">
 <h4>outliers</h4>
-<pre class="r"><code>anova_DistResp_o &lt;- aov(RT_io~Validity+Saliency+ResponseType+Distance+
-                       ResponseType*Validity+
-                         ResponseType*Distance+
-                       Validity*Saliency+
-                         Validity*Distance+
-                         Saliency*Distance+
-                        ResponseType*Validity*Distance+
-                         Saliency*Validity*Distance+
-                       Saliency*ResponseType+
-                       ResponseType*Saliency*Validity+
-                         ResponseType*Saliency*Validity*Distance,
-                     data=Exp1agg_o)
-pander(summary(anova_DistResp_o),style=&quot;rmarkdown&quot;,caption = &quot;ANOVA Results of RT(OUtliers) x Validity, Saliency,Distance and responseType&quot;)</code></pre>
+<pre class="r"><code>model_DistRep_o &lt;- lmer(RT_io~Sal*Val*RespType*Dist + (1|participant), data = Exp1agg_o)</code></pre>
+<pre><code>## fixed-effect model matrix is rank deficient so dropping 15 columns / coefficients</code></pre>
+<pre class="r"><code>anova_DistResp_o &lt;- Anova(model_DistRep_o, test.statistic = &quot;F&quot;, type = &quot;3&quot;)
+
+pander(anova_DistResp_o,style=&quot;rmarkdown&quot;,caption = &quot;ANOVA Results of RT(OUtliers) x Validity, Saliency,Distance and responseType&quot;)</code></pre>
 <table>
-<caption>ANOVA Results of RT(OUtliers) x Validity, Saliency,Distance and responseType (continued below)</caption>
+<caption>ANOVA Results of RT(OUtliers) x Validity, Saliency,Distance and responseType</caption>
 <thead>
 <tr class="header">
 <th align="center"> </th>
+<th align="center">F</th>
 <th align="center">Df</th>
-<th align="center">Sum Sq</th>
-<th align="center">Mean Sq</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td align="center"><strong>Validity</strong></td>
-<td align="center">1</td>
-<td align="center">1345</td>
-<td align="center">1345</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Saliency</strong></td>
-<td align="center">1</td>
-<td align="center">9609</td>
-<td align="center">9609</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>ResponseType</strong></td>
-<td align="center">1</td>
-<td align="center">5387</td>
-<td align="center">5387</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Distance</strong></td>
-<td align="center">13</td>
-<td align="center">85110</td>
-<td align="center">6547</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:ResponseType</strong></td>
-<td align="center">1</td>
-<td align="center">570.2</td>
-<td align="center">570.2</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>ResponseType:Distance</strong></td>
-<td align="center">11</td>
-<td align="center">56066</td>
-<td align="center">5097</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:Saliency</strong></td>
-<td align="center">1</td>
-<td align="center">11709</td>
-<td align="center">11709</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Validity:Distance</strong></td>
-<td align="center">12</td>
-<td align="center">84168</td>
-<td align="center">7014</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Saliency:Distance</strong></td>
-<td align="center">12</td>
-<td align="center">136097</td>
-<td align="center">11341</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Saliency:ResponseType</strong></td>
-<td align="center">1</td>
-<td align="center">36320</td>
-<td align="center">36320</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:ResponseType:Distance</strong></td>
-<td align="center">11</td>
-<td align="center">146185</td>
-<td align="center">13290</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Validity:Saliency:Distance</strong></td>
-<td align="center">10</td>
-<td align="center">44779</td>
-<td align="center">4478</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:Saliency:ResponseType</strong></td>
-<td align="center">1</td>
-<td align="center">47150</td>
-<td align="center">47150</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Saliency:ResponseType:Distance</strong></td>
-<td align="center">10</td>
-<td align="center">110339</td>
-<td align="center">11034</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:Saliency:ResponseType:Distance</strong></td>
-<td align="center">10</td>
-<td align="center">92504</td>
-<td align="center">9250</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Residuals</strong></td>
-<td align="center">2513</td>
-<td align="center">21197369</td>
-<td align="center">8435</td>
-</tr>
-</tbody>
-</table>
-<table>
-<thead>
-<tr class="header">
-<th align="center"> </th>
-<th align="center">F value</th>
+<th align="center">Df.res</th>
 <th align="center">Pr(&gt;F)</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
-<td align="center"><strong>Validity</strong></td>
-<td align="center">0.1594</td>
-<td align="center">0.6897</td>
+<td align="center"><strong>(Intercept)</strong></td>
+<td align="center">2356</td>
+<td align="center">1</td>
+<td align="center">197.6</td>
+<td align="center">8.919e-112</td>
 </tr>
 <tr class="even">
-<td align="center"><strong>Saliency</strong></td>
-<td align="center">1.139</td>
-<td align="center">0.2859</td>
+<td align="center"><strong>Sal</strong></td>
+<td align="center">0.1465</td>
+<td align="center">1</td>
+<td align="center">2454</td>
+<td align="center">0.7019</td>
 </tr>
 <tr class="odd">
-<td align="center"><strong>ResponseType</strong></td>
-<td align="center">0.6387</td>
-<td align="center">0.4243</td>
+<td align="center"><strong>Val</strong></td>
+<td align="center">0.2514</td>
+<td align="center">1</td>
+<td align="center">2454</td>
+<td align="center">0.6161</td>
 </tr>
 <tr class="even">
-<td align="center"><strong>Distance</strong></td>
-<td align="center">0.7762</td>
-<td align="center">0.6864</td>
+<td align="center"><strong>RespType</strong></td>
+<td align="center">6.226</td>
+<td align="center">1</td>
+<td align="center">2455</td>
+<td align="center">0.01265</td>
 </tr>
 <tr class="odd">
-<td align="center"><strong>Validity:ResponseType</strong></td>
-<td align="center">0.0676</td>
-<td align="center">0.7949</td>
+<td align="center"><strong>Dist</strong></td>
+<td align="center">1.132</td>
+<td align="center">13</td>
+<td align="center">2455</td>
+<td align="center">0.3265</td>
 </tr>
 <tr class="even">
-<td align="center"><strong>ResponseType:Distance</strong></td>
-<td align="center">0.6043</td>
-<td align="center">0.8267</td>
+<td align="center"><strong>Sal:Val</strong></td>
+<td align="center">0.138</td>
+<td align="center">1</td>
+<td align="center">2454</td>
+<td align="center">0.7103</td>
 </tr>
 <tr class="odd">
-<td align="center"><strong>Validity:Saliency</strong></td>
-<td align="center">1.388</td>
-<td align="center">0.2388</td>
+<td align="center"><strong>Sal:RespType</strong></td>
+<td align="center">1.602</td>
+<td align="center">1</td>
+<td align="center">2456</td>
+<td align="center">0.2057</td>
 </tr>
 <tr class="even">
-<td align="center"><strong>Validity:Distance</strong></td>
-<td align="center">0.8315</td>
-<td align="center">0.6179</td>
+<td align="center"><strong>Val:RespType</strong></td>
+<td align="center">6.62</td>
+<td align="center">1</td>
+<td align="center">2455</td>
+<td align="center">0.01014</td>
 </tr>
 <tr class="odd">
-<td align="center"><strong>Saliency:Distance</strong></td>
-<td align="center">1.345</td>
-<td align="center">0.186</td>
+<td align="center"><strong>Sal:Dist</strong></td>
+<td align="center">1.718</td>
+<td align="center">12</td>
+<td align="center">2455</td>
+<td align="center">0.05696</td>
 </tr>
 <tr class="even">
-<td align="center"><strong>Saliency:ResponseType</strong></td>
-<td align="center">4.306</td>
-<td align="center">0.03808</td>
+<td align="center"><strong>Val:Dist</strong></td>
+<td align="center">0.7037</td>
+<td align="center">12</td>
+<td align="center">2455</td>
+<td align="center">0.7493</td>
 </tr>
 <tr class="odd">
-<td align="center"><strong>Validity:ResponseType:Distance</strong></td>
-<td align="center">1.576</td>
-<td align="center">0.09925</td>
+<td align="center"><strong>RespType:Dist</strong></td>
+<td align="center">2.486</td>
+<td align="center">11</td>
+<td align="center">2456</td>
+<td align="center">0.004222</td>
 </tr>
 <tr class="even">
-<td align="center"><strong>Validity:Saliency:Distance</strong></td>
-<td align="center">0.5309</td>
-<td align="center">0.8694</td>
+<td align="center"><strong>Sal:Val:RespType</strong></td>
+<td align="center">1.062</td>
+<td align="center">1</td>
+<td align="center">2455</td>
+<td align="center">0.3028</td>
 </tr>
 <tr class="odd">
-<td align="center"><strong>Validity:Saliency:ResponseType</strong></td>
-<td align="center">5.59</td>
-<td align="center">0.01814</td>
+<td align="center"><strong>Sal:Val:Dist</strong></td>
+<td align="center">0.6224</td>
+<td align="center">11</td>
+<td align="center">2455</td>
+<td align="center">0.8112</td>
 </tr>
 <tr class="even">
-<td align="center"><strong>Saliency:ResponseType:Distance</strong></td>
-<td align="center">1.308</td>
-<td align="center">0.2199</td>
+<td align="center"><strong>Sal:RespType:Dist</strong></td>
+<td align="center">2.775</td>
+<td align="center">10</td>
+<td align="center">2456</td>
+<td align="center">0.002064</td>
 </tr>
 <tr class="odd">
-<td align="center"><strong>Validity:Saliency:ResponseType:Distance</strong></td>
-<td align="center">1.097</td>
-<td align="center">0.3606</td>
+<td align="center"><strong>Val:RespType:Dist</strong></td>
+<td align="center">1.967</td>
+<td align="center">10</td>
+<td align="center">2456</td>
+<td align="center">0.03302</td>
 </tr>
 <tr class="even">
-<td align="center"><strong>Residuals</strong></td>
-<td align="center">NA</td>
-<td align="center">NA</td>
+<td align="center"><strong>Sal:Val:RespType:Dist</strong></td>
+<td align="center">1.409</td>
+<td align="center">10</td>
+<td align="center">2456</td>
+<td align="center">0.1698</td>
 </tr>
 </tbody>
 </table>
+<pre class="r"><code>#aggDistRespSV_o&lt;- ddply(Exp1agg_o, .(Validity,Saliency,ResponseType,Distance), summarize, RTmean = mean(RT_io))</code></pre>
 </div>
 </div>
 <div id="anova-with-rt-and-the-factors-of-validity-saliency-responsetype-and-lastoccurence-condition" class="section level3">
 <h3>3. ANOVA with RT and the factors of Validity, Saliency, ResponseType and LastOccurence Condition</h3>
 <div id="farouts-2" class="section level4">
 <h4>Farouts</h4>
-<pre class="r"><code>anova_RespLC &lt;- aov(RT_ifo~Validity+Saliency+ResponseType+LastOcc_Condition+
-                       ResponseType*Validity+
-                         ResponseType*LastOcc_Condition+
-                       Validity*Saliency+
-                         Validity*LastOcc_Condition+
-                         Saliency*LastOcc_Condition+
-                        ResponseType*Validity*LastOcc_Condition+
-                         Saliency*Validity*LastOcc_Condition+
-                       Saliency*ResponseType+
-                       ResponseType*Saliency*Validity+
-                         ResponseType*Saliency*Validity*LastOcc_Condition,
-                     data=Exp1agg_RespLC_fo)
-pander(summary(anova_RespLC),style=&quot;rmarkdown&quot;,caption = &quot;ANOVA Results of RT x Validity, Saliency,LastOccurence condition and responseType&quot;)</code></pre>
+<pre class="r"><code>model_RespLC &lt;- lmer(RT_ifo~Sal*Val*RespType*LastOccCond + (1|participant), data = Exp1agg_RespLC_fo)
+
+# Anova(model_RespLC)
+pander(Anova(model_RespLC, test.statistic = &quot;F&quot;, type = &quot;3&quot;),style=&quot;rmarkdown&quot;,caption = &quot;ANOVA Results of RT x Validity, Saliency,LastOccurence condition and responseType&quot;)</code></pre>
 <table>
-<caption>ANOVA Results of RT x Validity, Saliency,LastOccurence condition and responseType (continued below)</caption>
+<caption>ANOVA Results of RT x Validity, Saliency,LastOccurence condition and responseType #### Plot showing the interaction between the four factors</caption>
 <thead>
 <tr class="header">
 <th align="center"> </th>
+<th align="center">F</th>
 <th align="center">Df</th>
-<th align="center">Sum Sq</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td align="center"><strong>Validity</strong></td>
-<td align="center">1</td>
-<td align="center">1141</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Saliency</strong></td>
-<td align="center">1</td>
-<td align="center">3765</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>ResponseType</strong></td>
-<td align="center">1</td>
-<td align="center">58.36</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>LastOcc_Condition</strong></td>
-<td align="center">1</td>
-<td align="center">1589</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:ResponseType</strong></td>
-<td align="center">1</td>
-<td align="center">418</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>ResponseType:LastOcc_Condition</strong></td>
-<td align="center">1</td>
-<td align="center">6963</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:Saliency</strong></td>
-<td align="center">1</td>
-<td align="center">16697</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Validity:LastOcc_Condition</strong></td>
-<td align="center">1</td>
-<td align="center">10521</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Saliency:LastOcc_Condition</strong></td>
-<td align="center">1</td>
-<td align="center">23290</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Saliency:ResponseType</strong></td>
-<td align="center">1</td>
-<td align="center">36267</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:ResponseType:LastOcc_Condition</strong></td>
-<td align="center">1</td>
-<td align="center">18040</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Validity:Saliency:LastOcc_Condition</strong></td>
-<td align="center">1</td>
-<td align="center">36.48</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:Saliency:ResponseType</strong></td>
-<td align="center">1</td>
-<td align="center">6143</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Saliency:ResponseType:LastOcc_Condition</strong></td>
-<td align="center">1</td>
-<td align="center">3334</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:Saliency:ResponseType:LastOcc_Condition</strong></td>
-<td align="center">1</td>
-<td align="center">64790</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Residuals</strong></td>
-<td align="center">727</td>
-<td align="center">5463594</td>
-</tr>
-</tbody>
-</table>
-<table>
-<caption>Table continues below</caption>
-<thead>
-<tr class="header">
-<th align="center"> </th>
-<th align="center">Mean Sq</th>
-<th align="center">F value</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td align="center"><strong>Validity</strong></td>
-<td align="center">1141</td>
-<td align="center">0.1518</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Saliency</strong></td>
-<td align="center">3765</td>
-<td align="center">0.5009</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>ResponseType</strong></td>
-<td align="center">58.36</td>
-<td align="center">0.007765</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>LastOcc_Condition</strong></td>
-<td align="center">1589</td>
-<td align="center">0.2114</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:ResponseType</strong></td>
-<td align="center">418</td>
-<td align="center">0.05562</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>ResponseType:LastOcc_Condition</strong></td>
-<td align="center">6963</td>
-<td align="center">0.9266</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:Saliency</strong></td>
-<td align="center">16697</td>
-<td align="center">2.222</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Validity:LastOcc_Condition</strong></td>
-<td align="center">10521</td>
-<td align="center">1.4</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Saliency:LastOcc_Condition</strong></td>
-<td align="center">23290</td>
-<td align="center">3.099</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Saliency:ResponseType</strong></td>
-<td align="center">36267</td>
-<td align="center">4.826</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:ResponseType:LastOcc_Condition</strong></td>
-<td align="center">18040</td>
-<td align="center">2.4</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Validity:Saliency:LastOcc_Condition</strong></td>
-<td align="center">36.48</td>
-<td align="center">0.004854</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:Saliency:ResponseType</strong></td>
-<td align="center">6143</td>
-<td align="center">0.8174</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Saliency:ResponseType:LastOcc_Condition</strong></td>
-<td align="center">3334</td>
-<td align="center">0.4437</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:Saliency:ResponseType:LastOcc_Condition</strong></td>
-<td align="center">64790</td>
-<td align="center">8.621</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Residuals</strong></td>
-<td align="center">7515</td>
-<td align="center">NA</td>
-</tr>
-</tbody>
-</table>
-<table>
-<thead>
-<tr class="header">
-<th align="center"> </th>
+<th align="center">Df.res</th>
 <th align="center">Pr(&gt;F)</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
-<td align="center"><strong>Validity</strong></td>
-<td align="center">0.6969</td>
+<td align="center"><strong>(Intercept)</strong></td>
+<td align="center">2677</td>
+<td align="center">1</td>
+<td align="center">128</td>
+<td align="center">1.177e-87</td>
 </tr>
 <tr class="even">
-<td align="center"><strong>Saliency</strong></td>
-<td align="center">0.4793</td>
+<td align="center"><strong>Sal</strong></td>
+<td align="center">0.05288</td>
+<td align="center">1</td>
+<td align="center">668</td>
+<td align="center">0.8182</td>
 </tr>
 <tr class="odd">
-<td align="center"><strong>ResponseType</strong></td>
-<td align="center">0.9298</td>
+<td align="center"><strong>Val</strong></td>
+<td align="center">0.00774</td>
+<td align="center">1</td>
+<td align="center">670.5</td>
+<td align="center">0.9299</td>
 </tr>
 <tr class="even">
-<td align="center"><strong>LastOcc_Condition</strong></td>
-<td align="center">0.6458</td>
+<td align="center"><strong>RespType</strong></td>
+<td align="center">0.0361</td>
+<td align="center">1</td>
+<td align="center">671.8</td>
+<td align="center">0.8494</td>
 </tr>
 <tr class="odd">
-<td align="center"><strong>Validity:ResponseType</strong></td>
-<td align="center">0.8136</td>
+<td align="center"><strong>LastOccCond</strong></td>
+<td align="center">0.02897</td>
+<td align="center">1</td>
+<td align="center">668</td>
+<td align="center">0.8649</td>
 </tr>
 <tr class="even">
-<td align="center"><strong>ResponseType:LastOcc_Condition</strong></td>
-<td align="center">0.3361</td>
+<td align="center"><strong>Sal:Val</strong></td>
+<td align="center">1.697</td>
+<td align="center">1</td>
+<td align="center">670</td>
+<td align="center">0.1931</td>
 </tr>
 <tr class="odd">
-<td align="center"><strong>Validity:Saliency</strong></td>
-<td align="center">0.1365</td>
+<td align="center"><strong>Sal:RespType</strong></td>
+<td align="center">6.308</td>
+<td align="center">1</td>
+<td align="center">671.9</td>
+<td align="center">0.01225</td>
 </tr>
 <tr class="even">
-<td align="center"><strong>Validity:LastOcc_Condition</strong></td>
-<td align="center">0.2371</td>
+<td align="center"><strong>Val:RespType</strong></td>
+<td align="center">0.0181</td>
+<td align="center">1</td>
+<td align="center">672.4</td>
+<td align="center">0.893</td>
 </tr>
 <tr class="odd">
-<td align="center"><strong>Saliency:LastOcc_Condition</strong></td>
-<td align="center">0.07876</td>
+<td align="center"><strong>Sal:LastOccCond</strong></td>
+<td align="center">0.0957</td>
+<td align="center">1</td>
+<td align="center">668</td>
+<td align="center">0.7571</td>
 </tr>
 <tr class="even">
-<td align="center"><strong>Saliency:ResponseType</strong></td>
-<td align="center">0.02835</td>
+<td align="center"><strong>Val:LastOccCond</strong></td>
+<td align="center">3.452e-06</td>
+<td align="center">1</td>
+<td align="center">669.8</td>
+<td align="center">0.9985</td>
 </tr>
 <tr class="odd">
-<td align="center"><strong>Validity:ResponseType:LastOcc_Condition</strong></td>
-<td align="center">0.1217</td>
+<td align="center"><strong>RespType:LastOccCond</strong></td>
+<td align="center">1.259</td>
+<td align="center">1</td>
+<td align="center">671.6</td>
+<td align="center">0.2622</td>
 </tr>
 <tr class="even">
-<td align="center"><strong>Validity:Saliency:LastOcc_Condition</strong></td>
-<td align="center">0.9445</td>
+<td align="center"><strong>Sal:Val:RespType</strong></td>
+<td align="center">7.411</td>
+<td align="center">1</td>
+<td align="center">672.1</td>
+<td align="center">0.006652</td>
 </tr>
 <tr class="odd">
-<td align="center"><strong>Validity:Saliency:ResponseType</strong></td>
-<td align="center">0.3662</td>
+<td align="center"><strong>Sal:Val:LastOccCond</strong></td>
+<td align="center">1.012</td>
+<td align="center">1</td>
+<td align="center">669.3</td>
+<td align="center">0.3148</td>
 </tr>
 <tr class="even">
-<td align="center"><strong>Saliency:ResponseType:LastOcc_Condition</strong></td>
-<td align="center">0.5056</td>
+<td align="center"><strong>Sal:RespType:LastOccCond</strong></td>
+<td align="center">15.46</td>
+<td align="center">1</td>
+<td align="center">671.7</td>
+<td align="center">9.308e-05</td>
 </tr>
 <tr class="odd">
-<td align="center"><strong>Validity:Saliency:ResponseType:LastOcc_Condition</strong></td>
-<td align="center">0.003428</td>
+<td align="center"><strong>Val:RespType:LastOccCond</strong></td>
+<td align="center">0.9345</td>
+<td align="center">1</td>
+<td align="center">671.9</td>
+<td align="center">0.334</td>
 </tr>
 <tr class="even">
-<td align="center"><strong>Residuals</strong></td>
-<td align="center">NA</td>
+<td align="center"><strong>Sal:Val:RespType:LastOccCond</strong></td>
+<td align="center">13.84</td>
+<td align="center">1</td>
+<td align="center">671.6</td>
+<td align="center">0.0002153</td>
 </tr>
 </tbody>
 </table>
+<p><img src="data:image/png;base64,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" width="672" /></p>
 </div>
 <div id="outliers-2" class="section level4">
 <h4>outliers</h4>
-<pre class="r"><code>anova_RespLC_o &lt;- aov(RT_io~Validity+Saliency+ResponseType+LastOcc_Condition+
-                       ResponseType*Validity+
-                         ResponseType*LastOcc_Condition+
-                       Validity*Saliency+
-                         Validity*LastOcc_Condition+
-                         Saliency*LastOcc_Condition+
-                        ResponseType*Validity*LastOcc_Condition+
-                         Saliency*Validity*LastOcc_Condition+
-                       Saliency*ResponseType+
-                       ResponseType*Saliency*Validity+
-                         ResponseType*Saliency*Validity*LastOcc_Condition,
-                     data=Exp1agg_RespLC_o)
-pander(summary(anova_RespLC_o),style=&quot;rmarkdown&quot;,caption = &quot;ANOVA Results of RT(OUtliers) x Validity, Saliency, LastOccurence&#39;s Condition and responseType&quot;)</code></pre>
+<pre class="r"><code>model_RespLC_o &lt;- lmer(RT_io~Sal*Val*RespType*LastOccCond + (1|participant), data = Exp1agg_RespLC_o)
+
+#Anova(model_RespLC_o, test.statistic = &quot;F&quot;, type = &quot;3&quot;)
+
+pander(Anova(model_RespLC_o, test.statistic = &quot;F&quot;, type = &quot;3&quot;),style=&quot;rmarkdown&quot;,caption = &quot;ANOVA Results of RT x Validity, Saliency,LastOccurence condition and responseType&quot;)</code></pre>
 <table>
-<caption>ANOVA Results of RT(OUtliers) x Validity, Saliency, LastOccurence’s Condition and responseType (continued below)</caption>
+<caption>ANOVA Results of RT x Validity, Saliency,LastOccurence condition and responseType</caption>
 <thead>
 <tr class="header">
 <th align="center"> </th>
+<th align="center">F</th>
 <th align="center">Df</th>
-<th align="center">Sum Sq</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td align="center"><strong>Validity</strong></td>
-<td align="center">1</td>
-<td align="center">137.9</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Saliency</strong></td>
-<td align="center">1</td>
-<td align="center">157.3</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>ResponseType</strong></td>
-<td align="center">1</td>
-<td align="center">453.1</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>LastOcc_Condition</strong></td>
-<td align="center">1</td>
-<td align="center">563.2</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:ResponseType</strong></td>
-<td align="center">1</td>
-<td align="center">3562</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>ResponseType:LastOcc_Condition</strong></td>
-<td align="center">1</td>
-<td align="center">1385</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:Saliency</strong></td>
-<td align="center">1</td>
-<td align="center">9230</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Validity:LastOcc_Condition</strong></td>
-<td align="center">1</td>
-<td align="center">9400</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Saliency:LastOcc_Condition</strong></td>
-<td align="center">1</td>
-<td align="center">12589</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Saliency:ResponseType</strong></td>
-<td align="center">1</td>
-<td align="center">18411</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:ResponseType:LastOcc_Condition</strong></td>
-<td align="center">1</td>
-<td align="center">32735</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Validity:Saliency:LastOcc_Condition</strong></td>
-<td align="center">1</td>
-<td align="center">485.5</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:Saliency:ResponseType</strong></td>
-<td align="center">1</td>
-<td align="center">1610</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Saliency:ResponseType:LastOcc_Condition</strong></td>
-<td align="center">1</td>
-<td align="center">1448</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:Saliency:ResponseType:LastOcc_Condition</strong></td>
-<td align="center">1</td>
-<td align="center">55700</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Residuals</strong></td>
-<td align="center">725</td>
-<td align="center">4752378</td>
-</tr>
-</tbody>
-</table>
-<table>
-<caption>Table continues below</caption>
-<thead>
-<tr class="header">
-<th align="center"> </th>
-<th align="center">Mean Sq</th>
-<th align="center">F value</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td align="center"><strong>Validity</strong></td>
-<td align="center">137.9</td>
-<td align="center">0.02103</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Saliency</strong></td>
-<td align="center">157.3</td>
-<td align="center">0.02399</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>ResponseType</strong></td>
-<td align="center">453.1</td>
-<td align="center">0.06912</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>LastOcc_Condition</strong></td>
-<td align="center">563.2</td>
-<td align="center">0.08592</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:ResponseType</strong></td>
-<td align="center">3562</td>
-<td align="center">0.5434</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>ResponseType:LastOcc_Condition</strong></td>
-<td align="center">1385</td>
-<td align="center">0.2112</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:Saliency</strong></td>
-<td align="center">9230</td>
-<td align="center">1.408</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Validity:LastOcc_Condition</strong></td>
-<td align="center">9400</td>
-<td align="center">1.434</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Saliency:LastOcc_Condition</strong></td>
-<td align="center">12589</td>
-<td align="center">1.921</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Saliency:ResponseType</strong></td>
-<td align="center">18411</td>
-<td align="center">2.809</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:ResponseType:LastOcc_Condition</strong></td>
-<td align="center">32735</td>
-<td align="center">4.994</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Validity:Saliency:LastOcc_Condition</strong></td>
-<td align="center">485.5</td>
-<td align="center">0.07407</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:Saliency:ResponseType</strong></td>
-<td align="center">1610</td>
-<td align="center">0.2457</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Saliency:ResponseType:LastOcc_Condition</strong></td>
-<td align="center">1448</td>
-<td align="center">0.2209</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:Saliency:ResponseType:LastOcc_Condition</strong></td>
-<td align="center">55700</td>
-<td align="center">8.497</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Residuals</strong></td>
-<td align="center">6555</td>
-<td align="center">NA</td>
-</tr>
-</tbody>
-</table>
-<table>
-<thead>
-<tr class="header">
-<th align="center"> </th>
+<th align="center">Df.res</th>
 <th align="center">Pr(&gt;F)</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
-<td align="center"><strong>Validity</strong></td>
-<td align="center">0.8847</td>
+<td align="center"><strong>(Intercept)</strong></td>
+<td align="center">2943</td>
+<td align="center">1</td>
+<td align="center">116.1</td>
+<td align="center">2.401e-84</td>
 </tr>
 <tr class="even">
-<td align="center"><strong>Saliency</strong></td>
-<td align="center">0.8769</td>
+<td align="center"><strong>Sal</strong></td>
+<td align="center">0.001176</td>
+<td align="center">1</td>
+<td align="center">666</td>
+<td align="center">0.9727</td>
 </tr>
 <tr class="odd">
-<td align="center"><strong>ResponseType</strong></td>
-<td align="center">0.7927</td>
+<td align="center"><strong>Val</strong></td>
+<td align="center">0.8359</td>
+<td align="center">1</td>
+<td align="center">668.2</td>
+<td align="center">0.3609</td>
 </tr>
 <tr class="even">
-<td align="center"><strong>LastOcc_Condition</strong></td>
-<td align="center">0.7695</td>
+<td align="center"><strong>RespType</strong></td>
+<td align="center">0.2846</td>
+<td align="center">1</td>
+<td align="center">669.2</td>
+<td align="center">0.5939</td>
 </tr>
 <tr class="odd">
-<td align="center"><strong>Validity:ResponseType</strong></td>
-<td align="center">0.4612</td>
+<td align="center"><strong>LastOccCond</strong></td>
+<td align="center">0.03614</td>
+<td align="center">1</td>
+<td align="center">666</td>
+<td align="center">0.8493</td>
 </tr>
 <tr class="even">
-<td align="center"><strong>ResponseType:LastOcc_Condition</strong></td>
-<td align="center">0.6459</td>
+<td align="center"><strong>Sal:Val</strong></td>
+<td align="center">1.224</td>
+<td align="center">1</td>
+<td align="center">667.7</td>
+<td align="center">0.2691</td>
 </tr>
 <tr class="odd">
-<td align="center"><strong>Validity:Saliency</strong></td>
-<td align="center">0.2358</td>
+<td align="center"><strong>Sal:RespType</strong></td>
+<td align="center">6.299</td>
+<td align="center">1</td>
+<td align="center">669.3</td>
+<td align="center">0.01232</td>
 </tr>
 <tr class="even">
-<td align="center"><strong>Validity:LastOcc_Condition</strong></td>
-<td align="center">0.2315</td>
+<td align="center"><strong>Val:RespType</strong></td>
+<td align="center">0.9238</td>
+<td align="center">1</td>
+<td align="center">669.8</td>
+<td align="center">0.3368</td>
 </tr>
 <tr class="odd">
-<td align="center"><strong>Saliency:LastOcc_Condition</strong></td>
-<td align="center">0.1662</td>
+<td align="center"><strong>Sal:LastOccCond</strong></td>
+<td align="center">0.03546</td>
+<td align="center">1</td>
+<td align="center">666</td>
+<td align="center">0.8507</td>
 </tr>
 <tr class="even">
-<td align="center"><strong>Saliency:ResponseType</strong></td>
-<td align="center">0.09418</td>
+<td align="center"><strong>Val:LastOccCond</strong></td>
+<td align="center">0.4161</td>
+<td align="center">1</td>
+<td align="center">667.5</td>
+<td align="center">0.5191</td>
 </tr>
 <tr class="odd">
-<td align="center"><strong>Validity:ResponseType:LastOcc_Condition</strong></td>
-<td align="center">0.02574</td>
+<td align="center"><strong>RespType:LastOccCond</strong></td>
+<td align="center">0.1179</td>
+<td align="center">1</td>
+<td align="center">669</td>
+<td align="center">0.7315</td>
 </tr>
 <tr class="even">
-<td align="center"><strong>Validity:Saliency:LastOcc_Condition</strong></td>
-<td align="center">0.7856</td>
+<td align="center"><strong>Sal:Val:RespType</strong></td>
+<td align="center">7.421</td>
+<td align="center">1</td>
+<td align="center">669.4</td>
+<td align="center">0.006615</td>
 </tr>
 <tr class="odd">
-<td align="center"><strong>Validity:Saliency:ResponseType</strong></td>
-<td align="center">0.6203</td>
+<td align="center"><strong>Sal:Val:LastOccCond</strong></td>
+<td align="center">0.6469</td>
+<td align="center">1</td>
+<td align="center">667.1</td>
+<td align="center">0.4215</td>
 </tr>
 <tr class="even">
-<td align="center"><strong>Saliency:ResponseType:LastOcc_Condition</strong></td>
-<td align="center">0.6385</td>
+<td align="center"><strong>Sal:RespType:LastOccCond</strong></td>
+<td align="center">13.38</td>
+<td align="center">1</td>
+<td align="center">669.1</td>
+<td align="center">0.0002748</td>
 </tr>
 <tr class="odd">
-<td align="center"><strong>Validity:Saliency:ResponseType:LastOcc_Condition</strong></td>
-<td align="center">0.003666</td>
+<td align="center"><strong>Val:RespType:LastOccCond</strong></td>
+<td align="center">0.005492</td>
+<td align="center">1</td>
+<td align="center">669.3</td>
+<td align="center">0.9409</td>
 </tr>
 <tr class="even">
-<td align="center"><strong>Residuals</strong></td>
-<td align="center">NA</td>
+<td align="center"><strong>Sal:Val:RespType:LastOccCond</strong></td>
+<td align="center">12.87</td>
+<td align="center">1</td>
+<td align="center">669</td>
+<td align="center">0.0003585</td>
 </tr>
 </tbody>
 </table>
 </div>
-</div>
-<div id="anova-with-rt-and-the-factors-of-validity-saliency-responsetype-and-lastoccurence-condition-1" class="section level3">
-<h3>4. ANOVA with RT and the factors of Validity, Saliency, ResponseType and LastOccurence Condition</h3>
-<div id="farouts-3" class="section level4">
-<h4>Farouts</h4>
-<pre class="r"><code>anova_RespDistLC &lt;- aov(RT_ifo~Validity+Saliency+ResponseType+LastOcc_Condition+Distance+
-                          Validity*Saliency+
-                         Validity*LastOcc_Condition+
-                         Saliency*LastOcc_Condition+
-                        ResponseType*Validity*LastOcc_Condition+
-                         Saliency*Validity*LastOcc_Condition+
-                       Saliency*ResponseType+
-                       ResponseType*Saliency*Validity+
-                         ResponseType*Saliency*Validity*LastOcc_Condition,
-                     data=Exp1agg_RespDistLC_fo)
-pander(summary(anova_RespLC),style=&quot;rmarkdown&quot;,caption = &quot;ANOVA Results of RT x Validity, Saliency,LastOccurence condition,Distance and responseType&quot;)</code></pre>
-<table>
-<caption>ANOVA Results of RT x Validity, Saliency,LastOccurence condition,Distance and responseType (continued below)</caption>
-<thead>
-<tr class="header">
-<th align="center"> </th>
-<th align="center">Df</th>
-<th align="center">Sum Sq</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td align="center"><strong>Validity</strong></td>
-<td align="center">1</td>
-<td align="center">1141</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Saliency</strong></td>
-<td align="center">1</td>
-<td align="center">3765</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>ResponseType</strong></td>
-<td align="center">1</td>
-<td align="center">58.36</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>LastOcc_Condition</strong></td>
-<td align="center">1</td>
-<td align="center">1589</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:ResponseType</strong></td>
-<td align="center">1</td>
-<td align="center">418</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>ResponseType:LastOcc_Condition</strong></td>
-<td align="center">1</td>
-<td align="center">6963</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:Saliency</strong></td>
-<td align="center">1</td>
-<td align="center">16697</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Validity:LastOcc_Condition</strong></td>
-<td align="center">1</td>
-<td align="center">10521</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Saliency:LastOcc_Condition</strong></td>
-<td align="center">1</td>
-<td align="center">23290</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Saliency:ResponseType</strong></td>
-<td align="center">1</td>
-<td align="center">36267</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:ResponseType:LastOcc_Condition</strong></td>
-<td align="center">1</td>
-<td align="center">18040</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Validity:Saliency:LastOcc_Condition</strong></td>
-<td align="center">1</td>
-<td align="center">36.48</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:Saliency:ResponseType</strong></td>
-<td align="center">1</td>
-<td align="center">6143</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Saliency:ResponseType:LastOcc_Condition</strong></td>
-<td align="center">1</td>
-<td align="center">3334</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:Saliency:ResponseType:LastOcc_Condition</strong></td>
-<td align="center">1</td>
-<td align="center">64790</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Residuals</strong></td>
-<td align="center">727</td>
-<td align="center">5463594</td>
-</tr>
-</tbody>
-</table>
-<table>
-<caption>Table continues below</caption>
-<thead>
-<tr class="header">
-<th align="center"> </th>
-<th align="center">Mean Sq</th>
-<th align="center">F value</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td align="center"><strong>Validity</strong></td>
-<td align="center">1141</td>
-<td align="center">0.1518</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Saliency</strong></td>
-<td align="center">3765</td>
-<td align="center">0.5009</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>ResponseType</strong></td>
-<td align="center">58.36</td>
-<td align="center">0.007765</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>LastOcc_Condition</strong></td>
-<td align="center">1589</td>
-<td align="center">0.2114</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:ResponseType</strong></td>
-<td align="center">418</td>
-<td align="center">0.05562</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>ResponseType:LastOcc_Condition</strong></td>
-<td align="center">6963</td>
-<td align="center">0.9266</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:Saliency</strong></td>
-<td align="center">16697</td>
-<td align="center">2.222</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Validity:LastOcc_Condition</strong></td>
-<td align="center">10521</td>
-<td align="center">1.4</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Saliency:LastOcc_Condition</strong></td>
-<td align="center">23290</td>
-<td align="center">3.099</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Saliency:ResponseType</strong></td>
-<td align="center">36267</td>
-<td align="center">4.826</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:ResponseType:LastOcc_Condition</strong></td>
-<td align="center">18040</td>
-<td align="center">2.4</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Validity:Saliency:LastOcc_Condition</strong></td>
-<td align="center">36.48</td>
-<td align="center">0.004854</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:Saliency:ResponseType</strong></td>
-<td align="center">6143</td>
-<td align="center">0.8174</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Saliency:ResponseType:LastOcc_Condition</strong></td>
-<td align="center">3334</td>
-<td align="center">0.4437</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:Saliency:ResponseType:LastOcc_Condition</strong></td>
-<td align="center">64790</td>
-<td align="center">8.621</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Residuals</strong></td>
-<td align="center">7515</td>
-<td align="center">NA</td>
-</tr>
-</tbody>
-</table>
-<table>
-<thead>
-<tr class="header">
-<th align="center"> </th>
-<th align="center">Pr(&gt;F)</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td align="center"><strong>Validity</strong></td>
-<td align="center">0.6969</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Saliency</strong></td>
-<td align="center">0.4793</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>ResponseType</strong></td>
-<td align="center">0.9298</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>LastOcc_Condition</strong></td>
-<td align="center">0.6458</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:ResponseType</strong></td>
-<td align="center">0.8136</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>ResponseType:LastOcc_Condition</strong></td>
-<td align="center">0.3361</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:Saliency</strong></td>
-<td align="center">0.1365</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Validity:LastOcc_Condition</strong></td>
-<td align="center">0.2371</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Saliency:LastOcc_Condition</strong></td>
-<td align="center">0.07876</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Saliency:ResponseType</strong></td>
-<td align="center">0.02835</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:ResponseType:LastOcc_Condition</strong></td>
-<td align="center">0.1217</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Validity:Saliency:LastOcc_Condition</strong></td>
-<td align="center">0.9445</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:Saliency:ResponseType</strong></td>
-<td align="center">0.3662</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Saliency:ResponseType:LastOcc_Condition</strong></td>
-<td align="center">0.5056</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:Saliency:ResponseType:LastOcc_Condition</strong></td>
-<td align="center">0.003428</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Residuals</strong></td>
-<td align="center">NA</td>
-</tr>
-</tbody>
-</table>
-</div>
-<div id="outliers-3" class="section level4">
-<h4>Outliers</h4>
-<pre class="r"><code>anova_RespDistLC_o &lt;- aov(RT_io~Validity+Saliency+ResponseType+LastOcc_Condition+Distance+
-                          Validity*Saliency+
-                         Validity*LastOcc_Condition+
-                         Saliency*LastOcc_Condition+
-                        ResponseType*Validity*LastOcc_Condition+
-                         Saliency*Validity*LastOcc_Condition+
-                       Saliency*ResponseType+
-                       ResponseType*Saliency*Validity+
-                         ResponseType*Saliency*Validity*LastOcc_Condition,
-                     data=Exp1agg_RespDistLC_o)
-pander(summary(anova_RespDistLC_o),style=&quot;rmarkdown&quot;,caption = &quot;ANOVA Results of RT(Outliers) x Validity, Saliency,LastOccurence condition,Distance and responseType&quot;)</code></pre>
-<table>
-<caption>ANOVA Results of RT(Outliers) x Validity, Saliency,LastOccurence condition,Distance and responseType (continued below)</caption>
-<thead>
-<tr class="header">
-<th align="center"> </th>
-<th align="center">Df</th>
-<th align="center">Sum Sq</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td align="center"><strong>Validity</strong></td>
-<td align="center">1</td>
-<td align="center">2107</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Saliency</strong></td>
-<td align="center">1</td>
-<td align="center">5647</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>ResponseType</strong></td>
-<td align="center">1</td>
-<td align="center">2106</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>LastOcc_Condition</strong></td>
-<td align="center">1</td>
-<td align="center">1190</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Distance</strong></td>
-<td align="center">1</td>
-<td align="center">38940</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Validity:Saliency</strong></td>
-<td align="center">1</td>
-<td align="center">6667</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:LastOcc_Condition</strong></td>
-<td align="center">1</td>
-<td align="center">8858</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Saliency:LastOcc_Condition</strong></td>
-<td align="center">1</td>
-<td align="center">4992</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:ResponseType</strong></td>
-<td align="center">1</td>
-<td align="center">71.24</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>ResponseType:LastOcc_Condition</strong></td>
-<td align="center">1</td>
-<td align="center">8313</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Saliency:ResponseType</strong></td>
-<td align="center">1</td>
-<td align="center">57367</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Validity:ResponseType:LastOcc_Condition</strong></td>
-<td align="center">1</td>
-<td align="center">30571</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:Saliency:LastOcc_Condition</strong></td>
-<td align="center">1</td>
-<td align="center">14667</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Validity:Saliency:ResponseType</strong></td>
-<td align="center">1</td>
-<td align="center">40023</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Saliency:ResponseType:LastOcc_Condition</strong></td>
-<td align="center">1</td>
-<td align="center">7.899</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Validity:Saliency:ResponseType:LastOcc_Condition</strong></td>
-<td align="center">1</td>
-<td align="center">107242</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Residuals</strong></td>
-<td align="center">3409</td>
-<td align="center">31429302</td>
-</tr>
-</tbody>
-</table>
-<table>
-<caption>Table continues below</caption>
-<thead>
-<tr class="header">
-<th align="center"> </th>
-<th align="center">Mean Sq</th>
-<th align="center">F value</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td align="center"><strong>Validity</strong></td>
-<td align="center">2107</td>
-<td align="center">0.2285</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Saliency</strong></td>
-<td align="center">5647</td>
-<td align="center">0.6125</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>ResponseType</strong></td>
-<td align="center">2106</td>
-<td align="center">0.2285</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>LastOcc_Condition</strong></td>
-<td align="center">1190</td>
-<td align="center">0.129</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Distance</strong></td>
-<td align="center">38940</td>
-<td align="center">4.224</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Validity:Saliency</strong></td>
-<td align="center">6667</td>
-<td align="center">0.7231</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:LastOcc_Condition</strong></td>
-<td align="center">8858</td>
-<td align="center">0.9608</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Saliency:LastOcc_Condition</strong></td>
-<td align="center">4992</td>
-<td align="center">0.5414</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:ResponseType</strong></td>
-<td align="center">71.24</td>
-<td align="center">0.007728</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>ResponseType:LastOcc_Condition</strong></td>
-<td align="center">8313</td>
-<td align="center">0.9016</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Saliency:ResponseType</strong></td>
-<td align="center">57367</td>
-<td align="center">6.222</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Validity:ResponseType:LastOcc_Condition</strong></td>
-<td align="center">30571</td>
-<td align="center">3.316</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:Saliency:LastOcc_Condition</strong></td>
-<td align="center">14667</td>
-<td align="center">1.591</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Validity:Saliency:ResponseType</strong></td>
-<td align="center">40023</td>
-<td align="center">4.341</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Saliency:ResponseType:LastOcc_Condition</strong></td>
-<td align="center">7.899</td>
-<td align="center">0.0008568</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Validity:Saliency:ResponseType:LastOcc_Condition</strong></td>
-<td align="center">107242</td>
-<td align="center">11.63</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Residuals</strong></td>
-<td align="center">9220</td>
-<td align="center">NA</td>
-</tr>
-</tbody>
-</table>
-<table>
-<thead>
-<tr class="header">
-<th align="center"> </th>
-<th align="center">Pr(&gt;F)</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td align="center"><strong>Validity</strong></td>
-<td align="center">0.6327</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Saliency</strong></td>
-<td align="center">0.4339</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>ResponseType</strong></td>
-<td align="center">0.6327</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>LastOcc_Condition</strong></td>
-<td align="center">0.7195</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Distance</strong></td>
-<td align="center">0.03994</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Validity:Saliency</strong></td>
-<td align="center">0.3952</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:LastOcc_Condition</strong></td>
-<td align="center">0.3271</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Saliency:LastOcc_Condition</strong></td>
-<td align="center">0.4619</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:ResponseType</strong></td>
-<td align="center">0.93</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>ResponseType:LastOcc_Condition</strong></td>
-<td align="center">0.3424</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Saliency:ResponseType</strong></td>
-<td align="center">0.01266</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Validity:ResponseType:LastOcc_Condition</strong></td>
-<td align="center">0.0687</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Validity:Saliency:LastOcc_Condition</strong></td>
-<td align="center">0.2073</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Validity:Saliency:ResponseType</strong></td>
-<td align="center">0.03728</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Saliency:ResponseType:LastOcc_Condition</strong></td>
-<td align="center">0.9767</td>
-</tr>
-<tr class="even">
-<td align="center"><strong>Validity:Saliency:ResponseType:LastOcc_Condition</strong></td>
-<td align="center">0.0006558</td>
-</tr>
-<tr class="odd">
-<td align="center"><strong>Residuals</strong></td>
-<td align="center">NA</td>
-</tr>
-</tbody>
-</table>
+<div id="plot-showing-the-interaction" class="section level4">
+<h4>Plot showing the interaction</h4>
+<p><img src="data:image/png;base64,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" width="672" /></p>
 </div>
 </div>
 </div>

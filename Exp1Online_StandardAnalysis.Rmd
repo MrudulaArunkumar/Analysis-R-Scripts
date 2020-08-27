@@ -16,6 +16,7 @@ sessionInfo()
 library(tidyverse) #for data prep
 library(plyr)#also for data prep
 library(ez) #anova stats
+library(schoRsch)
 library(knitr)#for markdown
 library(pander)#for markdown tables 
 library(here) #useful to set up working directory
@@ -127,6 +128,7 @@ Since the data is now cleaned to an extent, the next steps involve preparing the
   + Remove AttentionCheck 
 
 ```{r dataprep, warning=FALSE, include=FALSE}
+
 Exp1data_OL$ACC_Trials <- Exp1data_OL$ResponseKey.corr
 
 #new columns for error rate
@@ -134,11 +136,11 @@ Exp1data_OL$ErrorRate <- 1 - Exp1data_OL$ACC_Trials
 
 #removing practice and learn trials
 Exp1data_OL <- Exp1data_OL[!grepl("Practice","ExpfirstLearn", Exp1data_OL$Block),]
-Exp1data_OL <- Exp1data_OL[!grepl("learn", Exp1data_OL$Condition),]
+
 
 #removing other columns related to practice
 Exp1data_OL <- Exp1data_OL %>%
-  select(-pracend.keys, -pracend.rt, -Prac_start.rt, -PracRepeat.ran, -PracRepeat.thisIndex, -PracRepeat.thisN, -PracRepeat.thisRepN, -PracRepeat.thisTrialN, -Prac_start.keys, -ResponseKey_p.corr,-ResponseKey_p.keys, -ResponseKey_p.rt)
+  select(-pracend.keys, -pracend.rt, -Prac_start.rt,  -Prac_start.keys, -ResponseKey_p.corr,-ResponseKey_p.keys, -ResponseKey_p.rt)
 
 #get newly created vars to start of dataset
 Exp1data_OL <-Exp1data_OL %>%
@@ -153,11 +155,14 @@ detach(Exp1data_OL)
 ```
 
 
+
 ### Descriptive Statistics
 The descriptive statistics of the sample are listed below
 
 ```{r summarytable, echo=FALSE, warning=FALSE, message=FALSE}
 attach(Exp1data_OL)
+
+
 #Age
 pander(summary(Age), style = 'rmarkdown', caption = "Descriptive Statistics of Sample Age")
 pander((table(Age)/240), style = "rmarkdown", caption = "Number of participants per Age")
@@ -186,6 +191,28 @@ pander(round(table(Exp1data_OL$ACC_Trials)/nrow(Exp1data_OL)*100, digits = 3), s
 
 detach(Exp1data_OL)
 ```
+
+Exploring the data trends by comparing the fast and slow participants
+```{r}
+
+
+aggMeanpp <- aggregate(data = Exp1data_OL, RT_Trials ~ participant, mean)
+aggMeanpp <- aggMeanpp %>%
+  dplyr::rename("MeanRT"  = "RT_Trials")
+
+summary(aggMeanpp$MeanRT)
+
+#Splitting the participants at the median
+aggMeanpp$Fastpar <- ifelse(aggMeanpp$MeanRT <= 579.9,1,0)
+table(aggMeanpp$Fastpar)
+
+#combining these columns with the main df
+Exp1data_OL <- merge(Exp1data_OL,aggMeanpp,by="participant")
+
+Exp1data_OL$agerange <- ifelse(Exp1data_OL$Age <= 29, "Young", "Old")
+
+```
+
 
 
 ### Removing Outliers and Farouts
@@ -221,13 +248,56 @@ pander(summary(Exp1data_OL$RT_io), style = 'rmarkdown', caption = "Summary of RT
 
 ```
 
+#### Analysis on the types of participants and how they differed across conditions: learn/test
+```{r}
+#Checking the performances on learn and test trials for fast and slow pps
+aggCond <- aggregate(data = Exp1data_OL, RT_ifo~participant+Condition+Fastpar, mean)
+
+aggCond$participant <- as.factor(aggCond$participant)
+aggCond$Condition <- as.factor(aggCond$Condition)
+aggCond$Fastpar <- as.factor(aggCond$Fastpar)
+
+abcanova <- ezANOVA(data=aggCond,
+                    dv = RT_ifo,
+                    wid = participant,
+                    within = .(Condition),
+                    between = .(Fastpar),
+                    detailed = TRUE)
+anova_out(abcanova)
+
+
+ezPlot(data=aggCond,
+       dv = RT_ifo,
+       wid = participant,
+       within = .(Condition),
+       between = .(Fastpar),
+       x=Condition,
+       split = Fastpar,
+       y_lab = "Reaction Time Mean (in ms)",
+       split_lab = "Participant Speed",
+       do_bars = FALSE)+
+  theme_classic()+
+  ylim(500,700)+
+  ggtitle("Reaction Time across conditions between Fast and Slow participants")
+
+
+
+
+```
+
+
+
 ## **STATISTICAL ANALYSIS** 
 
 Only the test trials are used for analysis. The following analyses are carried out separately for outliers and for farouts
 
 ```{r prep, include=FALSE}
+#remove the learn trials
+Exp1data_OL <- Exp1data_OL[!grepl("learn", Exp1data_OL$Condition),]
+
 #easy reference
 Exp1data_OL <- Exp1data_OL%>%select(Saliency, Validity, everything())
+
 
 #check design
 table(Exp1data_OL$Condition, Exp1data_OL$Saliency)
@@ -247,6 +317,7 @@ Exp1agg_Standard_fo <- aggregate(data = Exp1data_OL, RT_ifo~participant+Saliency
 Exp1agg_Standard_fo$participant <- as.factor(Exp1agg_Standard_fo$participant)
 Exp1agg_Standard_fo$Saliency <- as.factor(Exp1agg_Standard_fo$Saliency)
 Exp1agg_Standard_fo$Validity <- as.factor(Exp1agg_Standard_fo$Validity)
+
 
 #renaming columns
 Exp1agg_Standard_fo <- Exp1agg_Standard_fo %>%
@@ -275,6 +346,7 @@ Exp1agg_Standard_o <- Exp1agg_Standard_o %>%
 aggmeanSV_o <- ddply(Exp1agg_Standard_o, .(Val,Sal), summarize,
                      RTmean = mean(RT_io), SD = sd(RT_io))
 
+
 ```
 
 #### **Aggregate means for Standard Analysis : ErrorRate with Validity and Saliency as factors** 
@@ -300,11 +372,23 @@ aggmeanER <- ddply(aggER, .(Validity,Saliency), summarise, ErrorMean = mean(Erro
 ### 1. Standard Analysis ANOVA with plot: FAROUTS removed
 ```{r Stdanalysis, warning = FALSE}
 
+#using EzANOVA
+standard_anova_fo <- ezANOVA(data=Exp1agg_Standard_fo,
+                    dv = RT_ifo,
+                    wid = participant,
+                    within = .(Sal,Val),
+                    type = 3,
+                    detailed = TRUE)
+anova_out(standard_anova_fo)
+  
+
 #using aov (matching with ez)
-standard_anova_fo <- aov(RT_ifo~(Val*Sal)+ Error(participant/(Val*Sal)), data = Exp1agg_Standard_fo)
+# standard_anova_fo <- aov(RT_ifo~(Val*Sal)+ Error(participant/1), data = Exp1agg_Standard_fo)
+
 
 # panderOptions('table.split.table',300)
-pander(standard_anova_fo, style = 'multiline', caption = "Standard ANOVA table: RT(farouts) as a function of Saliency and Validity", split.table = Inf, missing = NA)
+pander(standard_anova_fo, style = 'rmarkdown', caption = "Standard ANOVA table: RT(farouts) as a function of Saliency and Validity", split.table = Inf, missing = NA)
+
 
 ```
 
@@ -314,12 +398,12 @@ pander(standard_anova_fo, style = 'multiline', caption = "Standard ANOVA table: 
 #Plot for farouts
 
 ggplot(aggmeanSV_fo, aes(x=Sal, color=Val, y=RTmean))+
-  geom_line(aes(group=Val))+
-  geom_point()+
-  labs(x="Saliency", y = "ReactionTime", color = "Validity")+
+  geom_line(aes(group=Val, linetype = Val), size = 0.5)+
+  geom_point(aes(shape = Val), size = 2)+
+  labs(x="Saliency", y = "ReactionTime", colour = "Validity", linetype = "Validity", shape = "Validity")+
   theme_classic()+
   ylim(550,600)+
-  ggtitle("Standard Analysis: RT(farouts) as function of saliency and validity")+
+  ggtitle("Standard Analysis: RT(w.o farouts) as function of saliency and validity")+
   theme(plot.title = element_text(hjust = 0.5))+
   theme(legend.title = element_text(size=14), legend.text= element_text(size=12))+
   theme(axis.title = element_text(size=14),axis.text = element_text(size=12))
@@ -332,7 +416,16 @@ ggplot(aggmeanSV_fo, aes(x=Sal, color=Val, y=RTmean))+
 
 ```{r ANOVa outliers, warning=FALSE}
 #outliers
-standard_anova_o <- aov(RT_io~(Val*Sal)+Error(participant/(Val*Sal)), data = Exp1agg_Standard_o)
+#with ez
+
+standard_anova_o <- ezANOVA(data=Exp1agg_Standard_o,
+                    dv = RT_io,
+                    wid = participant,
+                    within = .(Sal,Val),
+                    detailed = TRUE)
+anova_out(standard_anova_o)
+
+# standard_anova_o <- aov(RT_io~(Val*Sal)+Error(participant/(Val*Sal)), data = Exp1agg_Standard_o)
 
 panderOptions('table.split.table',300)
 pander(standard_anova_o, style = 'rmarkdown', caption = "Standard ANOVA table: RT(outliers) as a function of Saliency and Validity", split.table = Inf)
@@ -346,12 +439,12 @@ pander(standard_anova_o, style = 'rmarkdown', caption = "Standard ANOVA table: R
 #plot for RT wo outliers
 
 ggplot(aggmeanSV_o, aes(x=Sal, color=Val, y=RTmean))+
-  geom_line(aes(group=Val))+
-  geom_point()+
-  labs(x="Saliency", y = "ReactionTime", color = "Validity")+
+  geom_line(aes(group=Val, linetype = Val))+
+  geom_point(aes(shape = Val), size = 2)+
+  labs(x="Saliency", y = "ReactionTime", color = "Validity", linetype = "Validity", shape = "Validity")+
   theme_classic()+
   ylim(550,600)+
-  ggtitle("Standard Analysis: RT(Outliers) as function of saliency and validity")+
+  ggtitle("Standard Analysis: RT(w.o Outliers) as function of saliency and validity")+
   theme(plot.title = element_text(hjust = 0.5))+
   theme(legend.title = element_text(size=12), legend.text= element_text(size=10))+
   theme(axis.title = element_text(size=12),axis.text = element_text(size=10))
@@ -479,6 +572,104 @@ ggplot(meanaggBlock_o, aes(x=Saliency, color=Validity, y=Mean))+
   theme(axis.title = element_text(size=12),axis.text = element_text(size=10))
 ```
 
+### Between participants comparison
+
+```{r}
+Exp1agg_StdPP_fo <- aggregate(data = Exp1data_OL, RT_ifo~participant+Saliency+Validity+Fastpar, mean)
+
+#convert to factors for ANOVA
+Exp1agg_StdPP_fo$participant <- as.factor(Exp1agg_StdPP_fo$participant)
+Exp1agg_StdPP_fo$Saliency <- as.factor(Exp1agg_StdPP_fo$Saliency)
+Exp1agg_StdPP_fo$Validity <- as.factor(Exp1agg_StdPP_fo$Validity)
+
+#creating two datsets for fast and slow pps
+Fast <- subset(Exp1agg_StdPP_fo, subset = (Fastpar==1))
+
+Slow <- subset(Exp1agg_StdPP_fo, subset = (Fastpar==0))
+
+Exp1agg_StdPP_fo$Fastpar <- ifelse(Exp1agg_StdPP_fo$Fastpar == 1, "Fast", "Slow")
+
+
+Exp1agg_StdPP_fo$Fastpar <- as.factor(Exp1agg_StdPP_fo$Fastpar)
+
+
+
+#By adding the type of participant as between subjects factor, explore the data trend
+stdanova_pp <- ezANOVA(data=Exp1agg_StdPP_fo,
+                    dv = RT_ifo,
+                    wid = participant,
+                    within = .(Saliency,Validity),
+                    between = .(Fastpar),
+                    detailed = TRUE)
+anova_out(stdanova_pp)
+
+pander(stdanova_pp, style = 'rmarkdown', caption = "Standard ANOVA table: RT(farouts) as a function of Saliency and Validity between fast and slow participants", split.table = Inf)
+
+ezPlot(data=Exp1agg_StdPP_fo,
+       dv = RT_ifo,
+       wid = participant,
+       within = .(Saliency,Validity),
+       between = .(Fastpar), 
+       x=Saliency, y_lab = "Reaction Time Mean (in ms)", 
+       split = Validity, col = Fastpar,do_bars = FALSE)+
+  theme_classic()+
+  ylim(500,700)+
+  ggtitle("Reaction Time across Saliency and Validity \n between Fast and Slow participants")
+
+
+
+##outliers
+Exp1agg_StdPP_o <- aggregate(data = Exp1data_OL, RT_io~participant+Saliency+Validity+Fastpar, mean)
+
+#convert to factors for ANOVA
+Exp1agg_StdPP_o$participant <- as.factor(Exp1agg_StdPP_o$participant)
+Exp1agg_StdPP_o$Saliency <- as.factor(Exp1agg_StdPP_o$Saliency)
+Exp1agg_StdPP_o$Validity <- as.factor(Exp1agg_StdPP_o$Validity)
+
+
+Exp1agg_StdPP_o$Fastpar <- ifelse(Exp1agg_StdPP_o$Fastpar == 1, "Fast", "Slow")
+
+
+Exp1agg_StdPP_o$Fastpar <- as.factor(Exp1agg_StdPP_o$Fastpar)
+
+#By adding the type of participant as between subjects factor, explore the data trend
+stdanova_pp_o <- ezANOVA(data=Exp1agg_StdPP_o,
+                    dv = RT_io,
+                    wid = participant,
+                    within = .(Saliency,Validity),
+                    between = .(Fastpar),
+                    detailed = TRUE)
+anova_out(stdanova_pp_o)
+
+pander(stdanova_pp_o, style = 'rmarkdown', caption = "Standard ANOVA table: RT(outliers) as a function of Saliency and Validity between fast and slow participants", split.table = Inf)
+
+Fastanova <- ezANOVA(data=Fast,
+                    dv = RT_ifo,
+                    wid = participant,
+                    within = .(Saliency,Validity),
+                    detailed = TRUE)
+anova_out(Fastanova)
+
+Slowanova <- ezANOVA(data=Slow,
+                    dv = RT_ifo,
+                    wid = participant,
+                    within = .(Saliency,Validity),
+                    detailed = TRUE)
+anova_out(Slowanova)
+
+ezPlot(data=Exp1agg_StdPP_o,
+       dv = RT_io,
+       wid = participant,
+       within = .(Saliency,Validity),
+       between = .(Fastpar), 
+       x=Saliency, y_lab = "Reaction Time Mean (in ms)",
+       split = Validity, col = Fastpar,do_bars = FALSE)+
+  theme_classic()+
+  ylim(500,700)+
+  ggtitle("Reaction Time (w.o Outliers) across Saliency and Validity \n between Fast and Slow participants")
+
+```
+
 
 ## Exploratory Analysis
 
@@ -488,23 +679,36 @@ No significant difference in the effect of validity or saliency in RT farouts an
 ```{r Age analysis, eval=FALSE}
 #subsetting the dataframe to only include participants less than 35
 Exp1data_OL_age <- Exp1data_OL%>%
-  subset(Age < 35)
+  subset(Age <= 35)
 #creating aggregate with farouts removed
-Exp1agg_Age_fo <- aggregate(data = Exp1data_OL_age, RT_ifo~participant+Saliency+Validity, mean)
+Exp1agg_Age_fo <- aggregate(data = Exp1data_OL, RT_ifo~participant+Saliency+Validity+agerange, mean)
 
 #to factors
 Exp1agg_Age_fo$participant <- as.factor(Exp1agg_Age_fo$participant)
 Exp1agg_Age_fo$Saliency <- as.factor(Exp1agg_Age_fo$Saliency)
 Exp1agg_Age_fo$Validity <- as.factor(Exp1agg_Age_fo$Validity)
+Exp1agg_Age_fo$agerange <- as.factor(Exp1agg_Age_fo$agerange)
 
 #ANOVa
 Age_anova_fo <- ezANOVA(Exp1agg_Age_fo,
                     dv = RT_ifo,
                     wid = participant,
                     within = .(Saliency,Validity),
+                    between = .(agerange),
                     detailed = TRUE,
                     )
 anova_out(Age_anova_fo)
+
+ezPlot(data=Exp1agg_Age_fo,
+       dv = RT_ifo,
+       wid = participant,
+       within = .(Saliency,Validity),
+       between = .(agerange),
+       x=Saliency, y_lab = "Reaction Time Mean (in ms)",
+       split = Validity,col=agerange,do_bars = FALSE)+                   
+ theme_classic()+
+  ylim(500,700)+
+  ggtitle("Reaction Time across Saliency and Validity \n among participants younger and older than 29")
 
 ##Same process for outliers
 Exp1agg_Age_o <- aggregate(data = Exp1data_OL_age, RT_io~participant+Saliency+Validity, mean)
@@ -566,7 +770,7 @@ ggplot(Exp1data_OL, aes(x=ErrorRate, y=RT_Trials))+
 ** 4. explore data: participants with many slow and/or erroneous resp? 
 ```{r slowand error, include = FALSE, eval=FALSE}
 #aggregate error rate per participant
-aggErr <- aggregate(data = Exp1data_OL, ErrorRate ~ participant, mean)
+
 #Boxplot 
 boxplot((aggErr$ErrorRate))
 
