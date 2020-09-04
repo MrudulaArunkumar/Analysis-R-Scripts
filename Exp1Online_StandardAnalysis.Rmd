@@ -31,14 +31,16 @@ rm(list=ls())
 #Exp1data_OL <- read.csv("C:/FSU Jena_PhD/Exp1/Data/Exp1-Prolific/Exp1data_online_fullset.csv")
 
 #Office set up Mrudula
-setwd("D:/PhD/Exp1-Overshadowing/Analysis/R Scripts")
+#setwd("D:/PhD/Exp1-Overshadowing/Analysis/R Scripts")
 set_here()
 
 #Office setup Carina
 #setwd("~/Daten/1 BRAC-FOR/overshadowing/Exp 1 Psychopy Mrudula/Analyses")
 
 #load from office
-Exp1data_OL <- read.csv("D:/PhD/Exp1-Overshadowing/Data/Exp1data_online_fullset.csv")
+#Exp1data_OL <- read.csv("D:/PhD/Exp1-Overshadowing/Data/Exp1data_online_fullset.csv")
+#load home
+Exp1data_OL <- read.csv("C:/FSU Jena_PhD/Exp1/Data/Exp1-Prolific/Exp1data_online_fullset.csv")
 
 #adding the dataframe to the search path to not repeat it everytime to select or name a column
 attach(Exp1data_OL)
@@ -425,8 +427,8 @@ pander(standard_anova_fo, style = 'rmarkdown', caption = "Standard ANOVA table: 
 ```{r PlotsafterANOVA, warning = FALSE, echo = FALSE}
 #Plot for farouts
 
-ggplot(aggmeanSV_fo, aes(x=Sal, color=Val, y=RTmean))+
-  geom_line(aes(group=Val, linetype = Val), size = 0.5)+
+stdaovSV <- ggplot(aggmeanSV_fo, aes(x=Sal, color=Val, y=RTmean))+
+  geom_line(aes(group=Val, linetype = Val), size = 1)+
   geom_point(aes(shape = Val), size = 2)+
   labs(x="Saliency", y = "ReactionTime", colour = "Validity", linetype = "Validity", shape = "Validity")+
   theme_classic()+
@@ -436,7 +438,7 @@ ggplot(aggmeanSV_fo, aes(x=Sal, color=Val, y=RTmean))+
   theme(legend.title = element_text(size=14), legend.text= element_text(size=12))+
   theme(axis.title = element_text(size=14),axis.text = element_text(size=12))
 
-
+ggsave(stdaovSV, file = "stdaovSV_fo.png", dpi = 800)
 ```
 
 
@@ -466,8 +468,8 @@ pander(standard_anova_o, style = 'rmarkdown', caption = "Standard ANOVA table: R
 ```{r OutlierPlot, echo=FALSE}
 #plot for RT wo outliers
 
-ggplot(aggmeanSV_o, aes(x=Sal, color=Val, y=RTmean))+
-  geom_line(aes(group=Val, linetype = Val))+
+stdaov_o <- ggplot(aggmeanSV_o, aes(x=Sal, color=Val, y=RTmean))+
+  geom_line(aes(group=Val, linetype = Val), size = 1)+
   geom_point(aes(shape = Val), size = 2)+
   labs(x="Saliency", y = "ReactionTime", color = "Validity", linetype = "Validity", shape = "Validity")+
   theme_classic()+
@@ -476,6 +478,8 @@ ggplot(aggmeanSV_o, aes(x=Sal, color=Val, y=RTmean))+
   theme(plot.title = element_text(hjust = 0.5))+
   theme(legend.title = element_text(size=12), legend.text= element_text(size=10))+
   theme(axis.title = element_text(size=12),axis.text = element_text(size=10))
+
+ggsave(stdaov_o, filename = "stdaovSV_o.png", dpi = 800)
 ```
 
 
