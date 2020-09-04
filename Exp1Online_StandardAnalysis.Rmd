@@ -302,6 +302,9 @@ Exp1data_OL <- Exp1data_OL%>%select(Saliency, Validity, everything())
 #check design
 table(Exp1data_OL$Condition, Exp1data_OL$Saliency)
 
+
+
+
 ```
 
 
@@ -347,6 +350,31 @@ aggmeanSV_o <- ddply(Exp1agg_Standard_o, .(Val,Sal), summarize,
                      RTmean = mean(RT_io), SD = sd(RT_io))
 
 
+```
+```{r}
+wordagg <- aggregate(data=Exp1data_OL, RT_ifo~participant+Validity+Distractor1+Saliency, mean)
+
+
+wordagg$participant <- as.factor(wordagg$participant)
+wordagg$Validity <- as.factor(wordagg$Validity)
+wordagg$Distractor1 <- as.factor(wordagg$Distractor1)
+wordagg$Saliency <- as.factor(wordagg$Saliency)
+wordanova <- ezANOVA(data = wordagg,
+                     dv = RT_ifo,
+                     wid = participant,
+                     within = .(Validity),
+                     between = Distractor1,
+                     detailed = TRUE)
+anova_out(wordanova)
+
+ezPlot(data = wordagg,
+       dv = RT_ifo,
+       wid = participant,
+       within = .(Validity),
+       between = Distractor1,
+       x = Distractor1, split = Validity, do_bars = FALSE)
+                     
+                     
 ```
 
 #### **Aggregate means for Standard Analysis : ErrorRate with Validity and Saliency as factors** 
