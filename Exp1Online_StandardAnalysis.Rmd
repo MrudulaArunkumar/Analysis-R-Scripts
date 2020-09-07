@@ -354,28 +354,30 @@ aggmeanSV_o <- ddply(Exp1agg_Standard_o, .(Val,Sal), summarize,
 
 ```
 ```{r}
-wordagg <- aggregate(data=Exp1data_OL, RT_ifo~participant+Validity+Distractor1+Saliency, mean)
+wordagg <- aggregate(data=Exp1data_OL, RT_ifo~participant+Validity+Distractor1+WordPair, mean)
 
 
 wordagg$participant <- as.factor(wordagg$participant)
 wordagg$Validity <- as.factor(wordagg$Validity)
 wordagg$Distractor1 <- as.factor(wordagg$Distractor1)
 wordagg$Saliency <- as.factor(wordagg$Saliency)
+wordagg$WordPair <- as.factor(wordagg$WordPair)
 wordanova <- ezANOVA(data = wordagg,
                      dv = RT_ifo,
                      wid = participant,
-                     within = .(Validity),
-                     between = Distractor1,
+                     within = .(Validity, Distractor1),
+                     between = .(WordPair),
                      detailed = TRUE)
 anova_out(wordanova)
 
 ezPlot(data = wordagg,
        dv = RT_ifo,
        wid = participant,
-       within = .(Validity),
-       between = Distractor1,
-       x = Distractor1, split = Validity, do_bars = FALSE)
-                     
+       within = .(Validity,Distractor1),
+       between = .(WordPair),
+       x = Distractor1, split = Validity,col = WordPair, do_bars = FALSE)
+  
+table(Exp1data_OL$Distractor1,Exp1data_OL$CorrectAnswer,Exp1data_OL$Validity,Exp1data_OL$WordPair)
                      
 ```
 
