@@ -385,7 +385,6 @@ standard_anova_fo <- ezANOVA(data=Exp1agg_Standard_fo,
                     type = 3,
                     detailed = TRUE)
 anova_out(standard_anova_fo)
-  
 
 #using aov (matching with ez)
 # standard_anova_fo <- aov(RT_ifo~(Val*Sal)+ Error(participant/1), data = Exp1agg_Standard_fo)
@@ -800,9 +799,21 @@ boxplot(agg_ifo$count_ifo)
 
 #### 5. Word pair trends
 
-
-Understanding the data trends depending on the word
 ```{r}
+include_graphics("D:/PhD/Exp1-Overshadowing/Exp/WORD PAIR Onlinestudy.jpg")
+```
+
+Points to be noted:
+This is the basic assignment given in the conditions.xlsx used in psychopy with the colour assignment of saliency based on white background
+So, this colour assignment was not counterbalanced based on screen background colour, and so for the black background, what was coded as salient, appeared as non salient since the colour was marked as dark grey (which is nonsalient on a black background).
+
+This is also probably why there was a main effect of background colour in one of the earlier analyses.
+
+This has been corrected below:
+
+First is to create the aggregate based on word pair of the entire data set and to see how the data looks while analysing the entire data set across the factors of word pair, word too.
+There is a strong 3 way interaction between Distractor, Validity and Word pair indicating a possible effect of choice of word and validity
+```{r warning=FALSE}
 
 wordagg <- aggregate(data=Exp1data_OL, RT_ifo~participant+Validity+Distractor1+Saliency+WordPair+CorrectAnswer, mean)
 
@@ -823,20 +834,22 @@ wordanova <- ezANOVA(data = wordagg,
 anova_out(wordanova)
 
 meanWordagg <- ddply(wordagg, .(Validity,Saliency,Distractor1,WordPair,CorrectAnswer), summarize, RTmean=mean(RT_ifo), SD = sd(RT_ifo))
-
-ezPlot(data = wordagg,
-       dv = RT_ifo,
-       wid = participant,
-       within = .(Validity,Distractor1),
-       between = .(WordPair),
-       x = Distractor1, split = Validity,col = WordPair, do_bars = FALSE)
+# ezPlot(data = wordagg,
+#        dv = RT_ifo,
+#        wid = participant,
+#        within = .(Validity,Distractor1),
+#        between = .(WordPair),
+#        x = Distractor1, split = Validity,col = WordPair, do_bars = FALSE)
   
+```
 
+Here is a plot that shows the Distribution of valid invalid trials for each word pair
+```{r }
 wordpairplot <- ggplot(meanWordagg, aes(x=Distractor1, color=Validity, y=RTmean))+
   geom_line(aes(group=Validity, linetype = Validity), size = 1)+
   geom_point(aes(shape = Saliency), size = 3)+
   labs(x="Distractor Word", y = "ReactionTime", colour = "Validity", linetype = "Validity", shape = "Saliency")+
-  facet_grid(CorrectAnswer~WordPair)+
+  facet_grid(~WordPair)+
   theme_classic()+
   # ylim(550,600)+
   ggtitle("Distribution of valid and invalid trials of Word pairs")+
@@ -847,10 +860,19 @@ wordpairplot <- ggplot(meanWordagg, aes(x=Distractor1, color=Validity, y=RTmean)
 #presenting the graph
 wordpairplot
 
-ggsave(wordpairplot, file = "Wordpairdistribution.jpeg", dpi = 800)
+#ggsave(wordpairplot, file = "Wordpairdistribution.jpeg", dpi = 800)
 
-table(Exp1data_OL$Distractor1,Exp1data_OL$CorrectAnswer,Exp1data_OL$WordPair)
 
+```
+
+The plot shows the weird pattern where  under each word pair combination (for eg., 1, 2 and so on), one of the word pairs of salient and non salient distractors had faster valid trials compared to invalid trials. 
+
+So to explore this further I split the data into people who had white background compared to people who had black background
+
+### White Background
+
+Here is the data concerning participants with white background: In other words, the participants where the saliency matched with what was coded, and what they saw. Like, Tisch if marked salient, also physically appeared salient in the experiment display 
+```{r echo=FALSE, warning=FALSE}
 #Selecting only White background participants
 whitebg <- Exp1data_OL %>%
   subset(Screen_bg == "white")
@@ -865,7 +887,10 @@ wordWhitebg$Distractor1 <- as.factor(wordWhitebg$Distractor1)
 wordWhitebg$Saliency <- as.factor(wordWhitebg$Saliency)
 wordWhitebg$WordPair <- as.factor(wordWhitebg$WordPair)
 wordWhitebg$CorrectAnswer <- as.factor(wordWhitebg$CorrectAnswer)
+```
 
+I computed the ANOVA to check for the data trends based on the true assignment and found that there is a significant interaction between Validity and Saliency.The interaction however is not in the expected direction, Still invalid salient trials are faster than valid salient trials
+```{r warning=FALSE}
 Whitewordanova <- ezANOVA(data = wordWhitebg,
                      dv = RT_ifo,
                      wid = participant,
@@ -879,8 +904,20 @@ ezPlot(data = wordWhitebg,
        within = .(Validity,Saliency),
        x = Saliency, split = Validity, do_bars = FALSE)
 
-##The pattern is reversed wherein the salient invalid trials are faster than salient valid trials and the opposite for non salient
 
+##The pattern is reversed wherein the salient invalid trials are faster than salient valid trials and the opposite for non salient
+```
+
+This is the plot that shows the relationship between the words under each combination, only for participants with white background. Inspite of choosing the participants with the right assignment and coding of saliency, the initial pattern where one word pair had faster valid trials than the other still exists.
+
+Interestingly you can see that it is faster for the word pair that is mapped to the right key "l"
+
+Not sure if we can read so much into this but it is a consistent pattern across all combinations so it feels worthy to take note of. 
+ 
+ * Perhaps we may have to check for effect of handedness or wonder whether while doing this study online participants only used one of their hands, instead of how we explain in the lab. 
+ 
+
+```{r echo=FALSE, warning=FALSE}
 meanWordWhite <- ddply(wordWhitebg, .(Validity,Saliency,Distractor1,WordPair,CorrectAnswer), summarize, RTmean=mean(RT_ifo), SD = sd(RT_ifo))
 
 ggplot(meanWordWhite, aes(x=Distractor1, color=Validity, y=RTmean))+
@@ -895,7 +932,12 @@ ggplot(meanWordWhite, aes(x=Distractor1, color=Validity, y=RTmean))+
   theme(legend.title = element_text(size=14), legend.text= element_text(size=12))+
   theme(axis.title = element_text(size=14),axis.text = element_text(size=12), axis.text.x = element_text(angle = 90))
 
+```
 
+### Black Background
+Conducted the same Analysis by choosing only participants with black background.The saliency factor was corrected by interchanging what was labelled as salient and nonsalient. However here there was no main effect or a significant interaction (as in the case for white bg), inspite of correcting for the salience factor assignment.
+
+```{r warning=FALSE}
 ###Same for Blackbackground
 
 blackbg <- Exp1data_OL %>%
@@ -928,8 +970,13 @@ ezPlot(data = wordBlackbg,
        wid = participant,
        within = .(Validity,Saliency),
        x = Saliency, split = Validity, do_bars = FALSE)
+```
 
-##The pattern is reversed wherein the salient invalid trials are faster than salient valid trials and the opposite for non salient
+The pattern here looks different compared to the white bg, but the difference is really small to think of any contributing factors.
+
+Now this is the plot showing the Validity effect for each of the Distractor words and still the same issue is visible inspite of correcting the salience factor. Similar to what was mentioned earlier, it is favourable towards the word pair associated with the Right key
+
+```{r echo=FALSE}
 
 meanWordBlack <- ddply(wordBlackbg, .(Validity,Saliency,Distractor1,WordPair,CorrectAnswer), summarize, RTmean=mean(RT_ifo), SD = sd(RT_ifo))
 
@@ -944,7 +991,6 @@ ggplot(meanWordBlack, aes(x=Distractor1, color=Validity, y=RTmean))+
   theme(plot.title = element_text(hjust = 0.5))+
   theme(legend.title = element_text(size=14), legend.text= element_text(size=12))+
   theme(axis.title = element_text(size=14),axis.text = element_text(size=12), axis.text.x = element_text(angle = 90))
-
 
                    
 ```
