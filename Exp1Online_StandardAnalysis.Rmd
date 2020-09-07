@@ -38,9 +38,9 @@ set_here()
 #setwd("~/Daten/1 BRAC-FOR/overshadowing/Exp 1 Psychopy Mrudula/Analyses")
 
 #load from office
-#Exp1data_OL <- read.csv("D:/PhD/Exp1-Overshadowing/Data/Exp1data_online_fullset.csv")
+Exp1data_OL <- read.csv("D:/PhD/Exp1-Overshadowing/Data/Exp1data_online_fullset.csv")
 #load home
-Exp1data_OL <- read.csv("C:/FSU Jena_PhD/Exp1/Data/Exp1-Prolific/Exp1data_online_fullset.csv")
+#Exp1data_OL <- read.csv("C:/FSU Jena_PhD/Exp1/Data/Exp1-Prolific/Exp1data_online_fullset.csv")
 
 #adding the dataframe to the search path to not repeat it everytime to select or name a column
 attach(Exp1data_OL)
@@ -194,7 +194,7 @@ pander(round(table(Exp1data_OL$ACC_Trials)/nrow(Exp1data_OL)*100, digits = 3), s
 detach(Exp1data_OL)
 ```
 
-Exploring the data trends by comparing the fast and slow participants
+Exploring the data trends by comparing the fast and slow participants based on age
 ```{r}
 
 
@@ -250,7 +250,7 @@ pander(summary(Exp1data_OL$RT_io), style = 'rmarkdown', caption = "Summary of RT
 
 ```
 
-#### Analysis on the types of participants and how they differed across conditions: learn/test
+####  Analysis on the types of participants and how they differed across conditions: learn/test
 ```{r}
 #Checking the performances on learn and test trials for fast and slow pps
 aggCond <- aggregate(data = Exp1data_OL, RT_ifo~participant+Condition+Fastpar, mean)
@@ -286,7 +286,6 @@ ezPlot(data=aggCond,
 
 
 ```
-
 
 
 ## **STATISTICAL ANALYSIS** 
@@ -353,33 +352,7 @@ aggmeanSV_o <- ddply(Exp1agg_Standard_o, .(Val,Sal), summarize,
 
 
 ```
-```{r}
-wordagg <- aggregate(data=Exp1data_OL, RT_ifo~participant+Validity+Distractor1+WordPair, mean)
 
-
-wordagg$participant <- as.factor(wordagg$participant)
-wordagg$Validity <- as.factor(wordagg$Validity)
-wordagg$Distractor1 <- as.factor(wordagg$Distractor1)
-wordagg$Saliency <- as.factor(wordagg$Saliency)
-wordagg$WordPair <- as.factor(wordagg$WordPair)
-wordanova <- ezANOVA(data = wordagg,
-                     dv = RT_ifo,
-                     wid = participant,
-                     within = .(Validity, Distractor1),
-                     between = .(WordPair),
-                     detailed = TRUE)
-anova_out(wordanova)
-
-ezPlot(data = wordagg,
-       dv = RT_ifo,
-       wid = participant,
-       within = .(Validity,Distractor1),
-       between = .(WordPair),
-       x = Distractor1, split = Validity,col = WordPair, do_bars = FALSE)
-  
-table(Exp1data_OL$Distractor1,Exp1data_OL$CorrectAnswer,Exp1data_OL$Validity,Exp1data_OL$WordPair)
-                     
-```
 
 #### **Aggregate means for Standard Analysis : ErrorRate with Validity and Saliency as factors** 
 Aggregate ErrorRate was also calculated across each participant
@@ -787,7 +760,7 @@ ggplot(meanbin, aes(x=Saliency, color=Validity, y=mean))+
 ```
 
 
-** 3. Speed Accuracy Tradeoff
+#### 3. Speed Accuracy Tradeoff
 ```{r plotRTvsACC,include=FALSE, eval=FALSE}
 
 ggplot(Exp1data_OL, aes(x=ACC_Trials, y=RT_Trials))+
@@ -801,7 +774,7 @@ ggplot(Exp1data_OL, aes(x=ErrorRate, y=RT_Trials))+
 ```
 
 
-** 4. explore data: participants with many slow and/or erroneous resp? 
+#### 4. explore data: participants with many slow and/or erroneous resp? 
 ```{r slowand error, include = FALSE, eval=FALSE}
 #aggregate error rate per participant
 
@@ -825,3 +798,153 @@ boxplot(agg_ifo$count_ifo)
 ```
 
 
+#### 5. Word pair trends
+
+
+Understanding the data trends depending on the word
+```{r}
+
+wordagg <- aggregate(data=Exp1data_OL, RT_ifo~participant+Validity+Distractor1+Saliency+WordPair+CorrectAnswer, mean)
+
+
+wordagg$participant <- as.factor(wordagg$participant)
+wordagg$Validity <- as.factor(wordagg$Validity)
+wordagg$Distractor1 <- as.factor(wordagg$Distractor1)
+wordagg$Saliency <- as.factor(wordagg$Saliency)
+wordagg$WordPair <- as.factor(wordagg$WordPair)
+wordagg$CorrectAnswer <- as.factor(wordagg$CorrectAnswer)
+
+wordanova <- ezANOVA(data = wordagg,
+                     dv = RT_ifo,
+                     wid = participant,
+                     within = .(Validity, Distractor1),
+                     between = .(WordPair),
+                     detailed = TRUE)
+anova_out(wordanova)
+
+meanWordagg <- ddply(wordagg, .(Validity,Saliency,Distractor1,WordPair,CorrectAnswer), summarize, RTmean=mean(RT_ifo), SD = sd(RT_ifo))
+
+ezPlot(data = wordagg,
+       dv = RT_ifo,
+       wid = participant,
+       within = .(Validity,Distractor1),
+       between = .(WordPair),
+       x = Distractor1, split = Validity,col = WordPair, do_bars = FALSE)
+  
+
+wordpairplot <- ggplot(meanWordagg, aes(x=Distractor1, color=Validity, y=RTmean))+
+  geom_line(aes(group=Validity, linetype = Validity), size = 1)+
+  geom_point(aes(shape = Saliency), size = 3)+
+  labs(x="Distractor Word", y = "ReactionTime", colour = "Validity", linetype = "Validity", shape = "Saliency")+
+  facet_grid(CorrectAnswer~WordPair)+
+  theme_classic()+
+  # ylim(550,600)+
+  ggtitle("Distribution of valid and invalid trials of Word pairs")+
+  theme(plot.title = element_text(hjust = 0.5))+
+  theme(legend.title = element_text(size=14), legend.text= element_text(size=12))+
+  theme(axis.title = element_text(size=14),axis.text = element_text(size=12), axis.text.x = element_text(angle = 90))
+
+#presenting the graph
+wordpairplot
+
+ggsave(wordpairplot, file = "Wordpairdistribution.jpeg", dpi = 800)
+
+table(Exp1data_OL$Distractor1,Exp1data_OL$CorrectAnswer,Exp1data_OL$WordPair)
+
+#Selecting only White background participants
+whitebg <- Exp1data_OL %>%
+  subset(Screen_bg == "white")
+table(whitebg$participant)
+
+wordWhitebg <- aggregate(data=whitebg, RT_ifo~participant+Validity+Distractor1+Saliency+WordPair+CorrectAnswer, mean)
+
+
+wordWhitebg$participant <- as.factor(wordWhitebg$participant)
+wordWhitebg$Validity <- as.factor(wordWhitebg$Validity)
+wordWhitebg$Distractor1 <- as.factor(wordWhitebg$Distractor1)
+wordWhitebg$Saliency <- as.factor(wordWhitebg$Saliency)
+wordWhitebg$WordPair <- as.factor(wordWhitebg$WordPair)
+wordWhitebg$CorrectAnswer <- as.factor(wordWhitebg$CorrectAnswer)
+
+Whitewordanova <- ezANOVA(data = wordWhitebg,
+                     dv = RT_ifo,
+                     wid = participant,
+                     within = .(Validity, Saliency),
+                     detailed = TRUE)
+anova_out(Whitewordanova)
+
+ezPlot(data = wordWhitebg,
+       dv = RT_ifo,
+       wid = participant,
+       within = .(Validity,Saliency),
+       x = Saliency, split = Validity, do_bars = FALSE)
+
+##The pattern is reversed wherein the salient invalid trials are faster than salient valid trials and the opposite for non salient
+
+meanWordWhite <- ddply(wordWhitebg, .(Validity,Saliency,Distractor1,WordPair,CorrectAnswer), summarize, RTmean=mean(RT_ifo), SD = sd(RT_ifo))
+
+ggplot(meanWordWhite, aes(x=Distractor1, color=Validity, y=RTmean))+
+  geom_line(aes(group=Validity, linetype = Validity), size = 1)+
+  geom_point(aes(shape = Saliency), size = 3)+
+  labs(x="Distractor Word", y = "ReactionTime", colour = "Validity", linetype = "Validity", shape = "Saliency")+
+  facet_grid(~WordPair)+
+  theme_classic()+
+  # ylim(550,600)+
+  ggtitle("Distribution of valid and invalid trials of Word pairs for pps with White background")+
+  theme(plot.title = element_text(hjust = 0.5))+
+  theme(legend.title = element_text(size=14), legend.text= element_text(size=12))+
+  theme(axis.title = element_text(size=14),axis.text = element_text(size=12), axis.text.x = element_text(angle = 90))
+
+
+###Same for Blackbackground
+
+blackbg <- Exp1data_OL %>%
+  subset(Screen_bg == "black")
+table(blackbg$participant)
+
+blackbg <- blackbg%>%
+  mutate(Saliency = ifelse(Saliency == "nonsalient", "Salient", "nonsalient"))
+
+
+wordBlackbg <- aggregate(data=blackbg, RT_ifo~participant+Validity+Distractor1+Saliency+WordPair+CorrectAnswer, mean)
+
+
+wordBlackbg$participant <- as.factor(wordBlackbg$participant)
+wordBlackbg$Validity <- as.factor(wordBlackbg$Validity)
+wordBlackbg$Distractor1 <- as.factor(wordBlackbg$Distractor1)
+wordBlackbg$Saliency <- as.factor(wordBlackbg$Saliency)
+wordBlackbg$WordPair <- as.factor(wordBlackbg$WordPair)
+wordBlackbg$CorrectAnswer <- as.factor(wordBlackbg$CorrectAnswer)
+
+Blackwordanova <- ezANOVA(data = wordBlackbg,
+                     dv = RT_ifo,
+                     wid = participant,
+                     within = .(Validity, Saliency),
+                     detailed = TRUE)
+anova_out(Blackwordanova)
+
+ezPlot(data = wordBlackbg,
+       dv = RT_ifo,
+       wid = participant,
+       within = .(Validity,Saliency),
+       x = Saliency, split = Validity, do_bars = FALSE)
+
+##The pattern is reversed wherein the salient invalid trials are faster than salient valid trials and the opposite for non salient
+
+meanWordBlack <- ddply(wordBlackbg, .(Validity,Saliency,Distractor1,WordPair,CorrectAnswer), summarize, RTmean=mean(RT_ifo), SD = sd(RT_ifo))
+
+ggplot(meanWordBlack, aes(x=Distractor1, color=Validity, y=RTmean))+
+  geom_line(aes(group=Validity, linetype = Validity), size = 1)+
+  geom_point(aes(shape = Saliency), size = 3)+
+  labs(x="Distractor Word", y = "ReactionTime", colour = "Validity", linetype = "Validity", shape = "Saliency")+
+  facet_grid(~WordPair)+
+  theme_classic()+
+  # ylim(550,600)+
+  ggtitle("Distribution of valid and invalid trials of Word pairs for pps with Black background")+
+  theme(plot.title = element_text(hjust = 0.5))+
+  theme(legend.title = element_text(size=14), legend.text= element_text(size=12))+
+  theme(axis.title = element_text(size=14),axis.text = element_text(size=12), axis.text.x = element_text(angle = 90))
+
+
+                   
+```
