@@ -47,6 +47,7 @@ attach(Exp1data_OL)
 #remember to deattach() when you are done with it
 
 
+
 ```
 
 ### Cleaning the datafile
@@ -299,12 +300,10 @@ Exp1data_OL <- Exp1data_OL[!grepl("learn", Exp1data_OL$Condition),]
 #easy reference
 Exp1data_OL <- Exp1data_OL%>%select(Saliency, Validity, everything())
 
+table(Exp1data_OL$Screen_bg)
 
 #check design
 table(Exp1data_OL$Condition, Exp1data_OL$Saliency)
-
-
-
 
 ```
 
@@ -945,7 +944,7 @@ blackbg <- Exp1data_OL %>%
 table(blackbg$participant)
 
 blackbg <- blackbg%>%
-  mutate(Saliency = ifelse(Saliency == "nonsalient", "Salient", "nonsalient"))
+  mutate(Saliency = ifelse(Saliency == "nonsalient", "salient", "nonsalient"))
 
 
 wordBlackbg <- aggregate(data=blackbg, RT_ifo~participant+Validity+Distractor1+Saliency+WordPair+CorrectAnswer, mean)
@@ -994,3 +993,77 @@ ggplot(meanWordBlack, aes(x=Distractor1, color=Validity, y=RTmean))+
 
                    
 ```
+
+### Combined df and recheck ANOVA
+Now combing the black and white dataframes to one to have th Original Dataset but with corrected saliency factors for black background participants
+
+```{r}
+Expbgchecked <- rbind(whitebg,blackbg)
+
+table(Expbgchecked$Screen_bg,Expbgchecked$Saliency)
+
+Exp1v2agg_fo <- aggregate(data = Expbgchecked, RT_ifo~participant+Saliency+Validity, mean)
+
+#convert to factors for ANOVA
+Exp1v2agg_fo$participant <- as.factor(Exp1v2agg_fo$participant)
+Exp1v2agg_fo$Saliency <- as.factor(Exp1v2agg_fo$Saliency)
+Exp1v2agg_fo$Validity <- as.factor(Exp1v2agg_fo$Validity)
+
+V2aggmeanSV_fo <- ddply(Exp1v2agg_fo, .(Validity,Saliency), summarize, RTmean=mean(RT_ifo), SD = sd(RT_ifo))
+
+#update ANOVA
+
+update_anova_fo <- ezANOVA(data=Exp1v2agg_fo,
+                    dv = RT_ifo,
+                    wid = participant,
+                    within = .(Saliency,Validity),
+                    type = 3,
+                    detailed = TRUE)
+anova_out(update_anova_fo)
+
+ggplot(V2aggmeanSV_fo, aes(x=Saliency, color=Validity, y=RTmean))+
+  geom_line(aes(group=Validity, linetype = Validity), size = 1)+
+  geom_point(aes(shape = Validity), size = 2)+
+  labs(x="Saliency", y = "ReactionTime", colour = "Validity", linetype = "Validity", shape = "Validity")+
+  theme_classic()+
+  ylim(550,600)+
+  ggtitle("Updated Analysis: RT(w.o farouts) as function of saliency and validity")+
+  theme(plot.title = element_text(hjust = 0.5))+
+  theme(legend.title = element_text(size=14), legend.text= element_text(size=12))+
+  theme(axis.title = element_text(size=14),axis.text = element_text(size=12))
+
+
+##outliers
+
+Exp1v2agg_o <- aggregate(data = Expbgchecked, RT_io~participant+Saliency+Validity, mean)
+
+#convert to factors for ANOVA
+Exp1v2agg_o$participant <- as.factor(Exp1v2agg_o$participant)
+Exp1v2agg_o$Saliency <- as.factor(Exp1v2agg_o$Saliency)
+Exp1v2agg_o$Validity <- as.factor(Exp1v2agg_o$Validity)
+
+V2aggmeanSV_o <- ddply(Exp1v2agg_o, .(Validity,Saliency), summarize, RTmean=mean(RT_io), SD = sd(RT_io))
+
+#update NAOVA
+
+update_anova_o <- ezANOVA(data=Exp1v2agg_o,
+                    dv = RT_io,
+                    wid = participant,
+                    within = .(Saliency,Validity),
+                    type = 3,
+                    detailed = TRUE)
+anova_out(update_anova_o)
+
+ggplot(V2aggmeanSV_o, aes(x=Saliency, color=Validity, y=RTmean))+
+  geom_line(aes(group=Validity, linetype = Validity), size = 1)+
+  geom_point(aes(shape = Validity), size = 2)+
+  labs(x="Saliency", y = "ReactionTime", colour = "Validity", linetype = "Validity", shape = "Validity")+
+  theme_classic()+
+  ylim(550,600)+
+  ggtitle("Updated Analysis: RT(w.o outliers) as function of saliency and validity")+
+  theme(plot.title = element_text(hjust = 0.5))+
+  theme(legend.title = element_text(size=14), legend.text= element_text(size=12))+
+  theme(axis.title = element_text(size=14),axis.text = element_text(size=12))
+
+```
+
